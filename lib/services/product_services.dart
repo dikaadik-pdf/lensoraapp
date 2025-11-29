@@ -12,11 +12,11 @@ class ProductService {
     String? fotoUrl,
   ) async {
     await supabase.from('produk').insert({
-      'NamaProduk': namaProduk,
-      'Kategori': kategori,
-      'Harga': harga,
-      'Stok': stok,
-      'Foto_url': fotoUrl,
+      'namaproduk': namaProduk,
+      'kategori': kategori,
+      'harga': harga,
+      'stok': stok,
+      'fotourl': fotoUrl,
     });
   }
 

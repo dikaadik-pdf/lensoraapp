@@ -1,53 +1,92 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'supabase_client.dart';
 
 class AuthService {
-  final SupabaseClient _client = SupabaseClientService.client;
-  final String _table = 'users';
+  final SupabaseClient supabase = Supabase.instance.client;
 
-  Future<String?> signUp({
+  User? get currentUser => supabase.auth.currentUser;
+
+  /// ============= SIGN UP =============
+  Future<String> signUp({
     required String email,
     required String password,
-    String role = 'petugas',
+    required String role,
   }) async {
     try {
-      final existingUser = await _client
-          .from(_table)
-          .select()
-          .eq('email', email)
-          .maybeSingle();
+      // Sign up ke auth
+      final response = await supabase.auth.signUp(
+        email: email.trim(),
+        password: password,
+      );
 
-      if (existingUser != null) return 'Email sudah terdaftar';
+      if (response.user != null) {
+        // Insert ke tabel users
+        await insertUserToTable(
+          userID: response.user!.id,
+          email: email.trim(),
+          role: role.toLowerCase(), // admin / petugas
+        );
+        return 'Sign up berhasil';
+      }
 
-      await _client.from(_table).insert({
-        'email': email,
-        'password': password,
-        'role': role,
-      });
-
-      return 'Sign up berhasil';
+      return 'Gagal sign up';
+    } on AuthException catch (e) {
+      return e.message;
     } catch (e) {
-      return 'Gagal sign up: $e';
+      return 'Error: $e';
     }
   }
 
+  /// ============= INSERT USER KE TABEL USERS =============
+  Future<void> insertUserToTable({
+    required String userID,
+    required String email,
+    required String role,
+  }) async {
+    await supabase.from('users').insert({
+      'id': userID,
+      'email': email,
+      'role': role,
+    });
+  }
+
+  // ============= LOGIN =============
   Future<Map<String, dynamic>?> login({
     required String email,
     required String password,
   }) async {
     try {
-      final res = await _client
-          .from(_table)
-          .select()
-          .eq('email', email)
-          .eq('password', password)
-          .maybeSingle();
+      // 1️⃣ Login murni ke Supabase Auth
+      final response = await supabase.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-      if (res == null) return null;
-      return Map<String, dynamic>.from(res);
+      if (response.user == null) return null; // email/password salah
+
+      final uid = response.user!.id;
+
+      // 2️⃣ Ambil role dari tabel users (opsional)
+      final roleData = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', uid)
+          .maybeSingle();
+      print(
+        'Login successful: $email with role ${roleData != null ? roleData['role'] : 'N/A'}',
+      );
+      return {
+        'uid': uid,
+        'email': response.user!.email,
+        'role': roleData != null ? roleData['role'] : null, // kalau ada role
+      };
     } catch (e) {
-      print('Error login: $e');
+      print('Login error: $e');
       return null;
     }
+  }
+
+  /// ============= LOGOUT =============
+  Future<void> signOut() async {
+    await supabase.auth.signOut();
   }
 }

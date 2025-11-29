@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cashierapp_simulationukk2026/screens/splash.dart';
+import 'package:cashierapp_simulationukk2026/screens/users/splash.dart';
 import 'package:cashierapp_simulationukk2026/services/supabase_client.dart';
 
 void main() async {

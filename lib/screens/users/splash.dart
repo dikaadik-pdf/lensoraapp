@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'loginapp.dart';
-import 'signupapp.dart';
+import 'package:cashierapp_simulationukk2026/screens/users/loginapp.dart';
+import 'package:cashierapp_simulationukk2026/screens/users/signupapp.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
