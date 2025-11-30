@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cashierapp_simulationukk2026/services/auth_services.dart';
-import 'package:cashierapp_simulationukk2026/screens/users/signupapp.dart';
+import 'package:cashierapp_simulationukk2026/screens/users/splash.dart';
 import 'package:cashierapp_simulationukk2026/screens/users/dashboard.dart';
 
 class LoginPage extends StatefulWidget {
@@ -38,22 +38,22 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (res == null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text("Email atau password salah")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Email atau password salah")),
+        );
         return;
       }
 
-      final role = res["role"]; // admin | petugas
+      final role = res["role"];
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => DashboardScreen(role: role),
-        ),
+        MaterialPageRoute(builder: (_) => DashboardScreen(role: role)),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     } finally {
       setState(() => _loading = false);
     }
@@ -62,7 +62,10 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     const bgColor = Color(0xFF25292E);
-    const containerColor = Color(0xFF2E343B);
+    const outerContainerColor = Color(0xFF2E343B);
+    const inputColor = Color(0xFF1D1F21);
+    const backBtnColor = Color(0xFF1D1F21);
+    const loginBtnColor = Color(0xFF3A4C5E);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -70,17 +73,22 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           children: [
             const SizedBox(height: 40),
-            Image.asset('assets/images/lensoralogo.png', width: 110, height: 65),
+
+            Image.asset('assets/images/lensoralogo.png',
+                width: 110, height: 65),
+
             const SizedBox(height: 20),
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 35),
+                    width: 385,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                     decoration: BoxDecoration(
-                      color: containerColor,
+                      color: outerContainerColor,
                       borderRadius: BorderRadius.circular(25),
                     ),
                     child: Column(
@@ -88,142 +96,212 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         const Center(
                           child: Text(
-                            "Login",
+                            "Log In",
                             style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              _buildInput(
-                                controller: _emailCtrl,
-                                hint: "Email",
-                                icon: Icons.email,
-                                validator: (v) =>
-                                    v!.isEmpty ? "Masukkan email" : null,
-                              ),
-                              const SizedBox(height: 18),
-                              _buildInput(
-                                controller: _passCtrl,
-                                hint: "Password",
-                                icon: Icons.lock,
-                                obscure: !_isPasswordVisible,
-                                suffix: IconButton(
-                                  icon: Icon(
-                                    _isPasswordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                    color: Colors.white70,
-                                  ),
-                                  onPressed: () => setState(
-                                      () => _isPasswordVisible = !_isPasswordVisible),
-                                ),
-                                validator: (v) =>
-                                    v!.isEmpty ? "Masukkan password" : null,
-                              ),
-                            ],
+                              fontSize: 40,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
 
                         const SizedBox(height: 35),
 
+                        // FORM
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // LABEL EMAIL
+                              const Text(
+                                "E-mail",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+
+                              // EMAIL FIELD
+                              Container(
+                                width: 340,
+                                height: 55,
+                                decoration: BoxDecoration(
+                                  color: inputColor,
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                child: Center(
+                                  child: TextFormField(
+                                    controller: _emailCtrl,
+                                    validator: (v) => v == null || v.isEmpty
+                                        ? 'Masukkan email'
+                                        : null,
+                                    autovalidateMode:
+                                        AutovalidateMode.onUserInteraction,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontFamily: "Poppins",
+                                    ),
+                                    decoration: const InputDecoration(
+                                      hintText: 'Masukkan email',
+                                      hintStyle: TextStyle(color: Colors.white38),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 14),
+                                      errorStyle: TextStyle(height: 0),
+                                    ),
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // LABEL PASSWORD
+                              const Text(
+                                "Password",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+
+                              // PASSWORD FIELD
+                              Container(
+                                width: 340,
+                                height: 55,
+                                decoration: BoxDecoration(
+                                  color: inputColor,
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _passCtrl,
+                                        obscureText: !_isPasswordVisible,
+                                        validator: (v) => v == null || v.isEmpty
+                                            ? 'Masukkan password'
+                                            : null,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontFamily: "Poppins",
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: 'Masukkan password',
+                                          hintStyle: TextStyle(
+                                              color: Colors.white38),
+                                          border: InputBorder.none,
+                                          contentPadding:
+                                              EdgeInsets.symmetric(vertical: 14),
+                                          errorStyle: TextStyle(height: 0),
+                                        ),
+                                      ),
+                                    ),
+
+                                    IconButton(
+                                      onPressed: () => setState(() =>
+                                          _isPasswordVisible =
+                                              !_isPasswordVisible),
+                                      icon: Icon(
+                                        _isPasswordVisible
+                                            ? Icons.visibility
+                                            : Icons.visibility_off,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 130),
+
+                        // BUTTONS
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Expanded(
+                            SizedBox(
+                              width: 145,
+                              height: 45,
                               child: ElevatedButton(
                                 onPressed: () {
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (_) => const RegisterPage()),
+                                        builder: (_) => const SplashScreen()),
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  backgroundColor: backBtnColor,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(17),
                                   ),
                                 ),
                                 child: const Text(
-                                  "Register",
-                                  style: TextStyle(color: Colors.white, fontSize: 20),
+                                  "Back",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
+
+                            const SizedBox(width: 18),
+
+                            SizedBox(
+                              width: 145,
+                              height: 45,
                               child: ElevatedButton(
                                 onPressed: _loading ? null : _submit,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF56768A),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  backgroundColor: loginBtnColor,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(17),
                                   ),
                                 ),
                                 child: _loading
                                     ? const SizedBox(
-                                        width: 23,
-                                        height: 23,
+                                        width: 20,
+                                        height: 20,
                                         child: CircularProgressIndicator(
                                           color: Colors.white,
                                           strokeWidth: 2,
                                         ),
                                       )
                                     : const Text(
-                                        "Login",
+                                        "Log In",
                                         style: TextStyle(
-                                            color: Colors.white, fontSize: 20),
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
                               ),
                             ),
                           ],
-                        )
+                        ),
+
+                        const SizedBox(height: 18),
                       ],
                     ),
                   ),
                 ),
               ),
-            )
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInput({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    required String? Function(String?) validator,
-    bool obscure = false,
-    Widget? suffix,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Color(0xFF1E1F20),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        style:
-            const TextStyle(color: Colors.white, fontFamily: "Poppins", fontSize: 14),
-        validator: validator,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white38),
-          border: InputBorder.none,
-          icon: Icon(icon, color: Colors.white70),
-          suffixIcon: suffix,
         ),
       ),
     );
