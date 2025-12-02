@@ -252,7 +252,7 @@ class _LoginPageState extends State<LoginPage> {
                                   "Back",
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -285,7 +285,7 @@ class _LoginPageState extends State<LoginPage> {
                                         "Log In",
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 16,
+                                          fontSize: 20,
                                           fontWeight: FontWeight.w800,
                                         ),
                                       ),

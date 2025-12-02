@@ -31,9 +31,11 @@ class CustomSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 383,  // dari W Figme
+      height: 56, // dari H Figma
       decoration: BoxDecoration(
-        color: backgroundColor ?? const Color(0xFF2C3E50),
-        borderRadius: BorderRadius.circular(borderRadius ?? 8),
+        color: backgroundColor ?? const Color(0xFF2E343B),
+        borderRadius: BorderRadius.circular(borderRadius ?? 50),
       ),
       child: TextField(
         controller: controller,
@@ -56,8 +58,13 @@ class CustomSearchBar extends StatelessWidget {
             size: 20,
           ),
           border: InputBorder.none,
-          contentPadding: contentPadding ?? 
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+
+          // padding yang benar
+          contentPadding: contentPadding ??
+              const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 18,
+              ),
         ),
       ),
     );

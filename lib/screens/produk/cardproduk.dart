@@ -1,10 +1,10 @@
-// cardproduk.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cashierapp_simulationukk2026/models/produk_model.dart';
 import 'package:cashierapp_simulationukk2026/widgets/search_bar.dart';
 import 'addproduct.dart';
 import 'editproduct.dart';
+import 'package:cashierapp_simulationukk2026/widgets/confirm_dialog.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({Key? key}) : super(key: key);
@@ -39,9 +39,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
           .from('produk')
           .select()
           .eq('kategori', _selectedCategory);
-      _products =
-          (response as List).map((e) => ProdukModel.fromJson(e)).toList();
+
+      _products = (response as List)
+          .map((e) => ProdukModel.fromJson(e))
+          .toList();
+
       _filteredProducts = _products;
+
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
@@ -58,7 +62,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _filteredProducts = _products;
       } else {
         _filteredProducts = _products
-            .where((p) => p.namaProduk.toLowerCase().contains(query.toLowerCase()))
+            .where((p) =>
+                p.namaProduk.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -66,23 +71,30 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _deleteProduct(int produkID) async {
     try {
-      await Supabase.instance.client.from('produk').delete().eq('produkid', produkID);
+      await Supabase.instance.client
+          .from('produk')
+          .delete()
+          .eq('produkid', produkID);
+
       _loadProducts();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Product deleted successfully')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product deleted successfully')),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error deleting product: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting product: $e')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1C2833),
+      backgroundColor: const Color(0xFF25292E),
       body: SafeArea(
         child: Column(
           children: [
+            // HEADER
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -93,54 +105,84 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   ),
                   const Text(
                     'Product',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
             ),
 
+            // SEARCH BAR
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: CustomSearchBar(
-                controller: _searchController,
-                onChanged: _filterProducts,
-                hintText: 'Search Product',
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E343B),
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.4),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    )
+                  ],
+                ),
+                child: CustomSearchBar(
+                  controller: _searchController,
+                  onChanged: _filterProducts,
+                  hintText: 'Search Product',
+                ),
               ),
             ),
+
             const SizedBox(height: 16),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            // CATEGORY BUTTONS
+            SizedBox(
+              height: 38,
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: _categories.map((category) {
                   final isSelected = _selectedCategory == category['name'];
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategory = category['name'];
-                        });
-                        _loadProducts();
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFFFA500) : const Color(0xFF2C3E50),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(category['icon'], color: Colors.white, size: 18),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(category['name'],
-                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-                                  overflow: TextOverflow.ellipsis),
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedCategory = category['name']);
+                      _loadProducts();
+                    },
+                    child: Container(
+                      width: 95,
+                      height: 32,
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFFE4B169)
+                            : const Color(0xFF2E343B),
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.4),
+                            blurRadius: 5,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(category['icon'], color: Colors.white, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            category['name'],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -148,51 +190,66 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
+            // PRODUCT GRID
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFA500)))
-                  : _filteredProducts.isEmpty
-                      ? const Center(child: Text('No products found', style: TextStyle(color: Colors.white70)))
-                      : GridView.builder(
-                          padding: const EdgeInsets.all(16),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.65,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                          itemCount: _filteredProducts.length,
-                          itemBuilder: (context, index) => _buildProductCard(_filteredProducts[index]),
-                        ),
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFE4B169),
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 20,
+                        crossAxisSpacing: 20,
+                        childAspectRatio: 170 / 250,
+                      ),
+                      itemCount: _filteredProducts.length,
+                      itemBuilder: (context, index) =>
+                          _buildProductCard(_filteredProducts[index]),
+                    ),
             ),
 
+            // ADD BUTTON
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final result = await showDialog<bool>(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (context) => const AddProductDialog(),
-                  );
-
-                  if (result == true) {
-                    await _loadProducts();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Product added successfully')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.add, color: Colors.black),
-                label: const Text('Add Product', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Container(
+                width: 160,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6E6E6),
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.4),
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    )
+                  ],
+                ),
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final result = await showDialog<bool>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const AddProductDialog(),
+                    );
+                    if (result == true) _loadProducts();
+                  },
+                  icon: const Icon(Icons.add, color: Color(0xFF2E343B)),
+                  label: const Text(
+                    'Add Product',
+                    style: TextStyle(
+                      color: Color(0xFF2E343B),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -202,117 +259,179 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
+  // =====================================================================
+  // PRODUCT CARD (SUDAH DIRAPIIN)
+  // =====================================================================
   Widget _buildProductCard(ProdukModel product) {
     return Container(
-      decoration: BoxDecoration(color: const Color(0xFF2C3E50), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E343B),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.45),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          )
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // IMAGE
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: AspectRatio(
-              aspectRatio: 1,
+            child: Container(
+              height: 120,
+              width: double.infinity,
+              color: Colors.grey[850],
               child: product.fotoUrl != null
-                  ? Image.network(product.fotoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) {
-                      return Container(color: Colors.grey[800], child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 40));
-                    })
-                  : Container(color: Colors.grey[800], child: const Icon(Icons.image, color: Colors.grey, size: 40)),
+                  ? Image.network(
+                      product.fotoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.broken_image, color: Colors.grey),
+                    )
+                  : const Center(
+                      child:
+                          Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
             ),
           ),
 
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(product.namaProduk, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text('Rp ${product.harga.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                const Spacer(),
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: const Color(0xFFFFA500), borderRadius: BorderRadius.circular(4)),
-                    child: Text('Stock: ${product.stok}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500)),
+          // CONTENT
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // NAME
+                Text(
+                  product.namaProduk,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 4),
-                  if (product.stok < 5)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                      child: const Text('Low', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500)),
-                    ),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final result = await showDialog<bool>(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) => EditProductDialog(product: product),
-                        );
+                ),
 
-                        if (result == true) {
-                          await _loadProducts();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Product updated successfully')),
-                            );
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFA500),
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                      child: const Text('Edit', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 3),
+
+                // PRICE
+                Text(
+                  'Rp ${product.harga.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                // STOCK BADGE
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B169),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Stock : ${product.stok}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            backgroundColor: const Color(0xFF2C3E50),
-                            title: const Text('Delete Product', style: TextStyle(color: Colors.white)),
-                            content: Text('Are you sure you want to delete ${product.namaProduk}?', style: const TextStyle(color: Colors.white70)),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-                              TextButton(
-                                onPressed: () {
+                ),
+
+                const SizedBox(height: 12),
+
+                // BUTTON ROW
+                Row(
+                  children: [
+                    // EDIT
+                    Expanded(
+                      child: SizedBox(
+                        height: 30,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFE4B169),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                          onPressed: () async {
+                            final result = await showDialog<bool>(
+                              barrierDismissible: false,
+                              context: context,
+                              builder: (context) =>
+                                  EditProductDialog(product: product),
+                            );
+                            if (result == true) _loadProducts();
+                          },
+                          child: const Text(
+                            'Edit',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    // DELETE
+                    Expanded(
+                      child: SizedBox(
+                        height: 30,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFBF0505),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => ConfirmationDialog(
+                                logoAssetPath: "assets/images/lensoralogo.png",
+                                message: "Are You Sure About Delete Product?",
+                                onNoPressed: () => Navigator.pop(context),
+                                onYesPressed: () {
                                   Navigator.pop(context);
                                   _deleteProduct(product.produkID);
                                 },
-                                child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                              )
-                            ],
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        ),
                       ),
-                      child: const Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                     ),
-                  )
-                ])
-              ]),
+                  ],
+                ),
+              ],
             ),
-          ),
+          )
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 }

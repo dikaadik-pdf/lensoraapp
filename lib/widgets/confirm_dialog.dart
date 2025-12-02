@@ -1,12 +1,7 @@
-// ===========================================================
-//  CONFIRMATION DIALOG
-// ===========================================================
 import 'package:flutter/material.dart';
-
 
 class ConfirmationDialog extends StatelessWidget {
   final String logoAssetPath;
-  final String title;
   final String message;
   final VoidCallback onNoPressed;
   final VoidCallback onYesPressed;
@@ -14,7 +9,6 @@ class ConfirmationDialog extends StatelessWidget {
   const ConfirmationDialog({
     super.key,
     required this.logoAssetPath,
-    required this.title,
     required this.message,
     required this.onNoPressed,
     required this.onYesPressed,
@@ -25,80 +19,89 @@ class ConfirmationDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 320,
+        width: 330,
         decoration: BoxDecoration(
-          color: const Color(0xFF34495E),
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFF3A4C5E),
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Logo
+              // LOGO
               Image.asset(
                 logoAssetPath,
-                height: 60,
+                height: 50,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 20),
 
-              // Title
-              Text(
-                title,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
+              const SizedBox(height: 22),
 
-              const SizedBox(height: 10),
-
-              // Message
+              // MESSAGE (Tengah, Bold)
               Text(
                 message,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 26),
 
-              // Button Row (NO & YES)
+              // BUTTON NO & YES
               Row(
                 children: [
-                  // NO BUTTON (Merah)
+                  // NO BUTTON — Merah
                   Expanded(
                     child: ElevatedButton(
                       onPressed: onNoPressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                        backgroundColor: const Color(0xFFBF0505),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text("No",
-                          style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        "No",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
 
-                  // YES BUTTON (Biru)
+                  const SizedBox(width: 14),
+
+                  // YES BUTTON — Abu Gelap
                   Expanded(
                     child: ElevatedButton(
                       onPressed: onYesPressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3498DB),
+                        backgroundColor: const Color(0xFF2E343B),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text("Yes",
-                          style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        "Yes",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),

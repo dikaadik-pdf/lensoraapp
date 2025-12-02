@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cashierapp_simulationukk2026/models/pelanggan_models.dart';
+import 'package:cashierapp_simulationukk2026/services/helpercustomer.dart';
 import 'package:cashierapp_simulationukk2026/widgets/search_bar.dart';
-import 'package:cashierapp_simulationukk2026/screens/customer/addcustomer.dart';
-import 'package:cashierapp_simulationukk2026/screens/customer/editcustomer.dart';
-import 'package:cashierapp_simulationukk2026/screens/customer/detailcustomer.dart';
+import 'addcustomer.dart';
+import 'editcustomer.dart';
+import 'detailcustomer.dart';
 
 class CustomerManagementScreen extends StatefulWidget {
   const CustomerManagementScreen({Key? key}) : super(key: key);
 
   @override
-  State<CustomerManagementScreen> createState() => _CustomerManagementScreenState();
+  State<CustomerManagementScreen> createState() =>
+      _CustomerManagementScreenState();
 }
 
 class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
@@ -17,6 +19,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   TextEditingController searchController = TextEditingController();
   List<PelangganModel> customers = [];
   List<PelangganModel> filteredCustomers = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -31,38 +34,37 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
     super.dispose();
   }
 
-  void _loadCustomers() {
-    // TODO: Load dari database
-    // Sementara data dummy
-    customers = [
-      PelangganModel(
-        pelangganID: 1,
-        namaPelanggan: 'Dhika Kucecwara',
-        alamat: 'Jl. Contoh No. 123',
-        nomorTelepon: '081234567890',
-      ),
-      PelangganModel(
-        pelangganID: 2,
-        namaPelanggan: 'Dhika Kucecwara',
-        alamat: 'Jl. Sample No. 456',
-        nomorTelepon: '081234567891',
-      ),
-      PelangganModel(
-        pelangganID: 3,
-        namaPelanggan: 'Dhika Kucecwara',
-        alamat: 'Jl. Example No. 789',
-        nomorTelepon: '081234567892',
-      ),
-    ];
-    filteredCustomers = customers;
+  Future<void> _loadCustomers() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await PelangganDatabaseHelper.getAllPelanggan();
+      if (mounted) {
+        setState(() {
+          customers = data;
+          filteredCustomers = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading customers: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _filterCustomers() {
-    String query = searchController.text.toLowerCase();
+    String q = searchController.text.toLowerCase();
     setState(() {
-      filteredCustomers = customers.where((customer) {
-        return customer.namaPelanggan.toLowerCase().contains(query) ||
-            (customer.nomorTelepon?.toLowerCase().contains(query) ?? false);
+      filteredCustomers = customers.where((c) {
+        return c.namaPelanggan.toLowerCase().contains(q) ||
+            (c.nomorTelepon?.toLowerCase().contains(q) ?? false) ||
+            (c.alamat?.toLowerCase().contains(q) ?? false);
       }).toList();
     });
   }
@@ -70,140 +72,176 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   void _navigateToAddCustomer() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddCustomerScreen()),
+      MaterialPageRoute(builder: (c) => const AddCustomerScreen()),
     );
-    if (result != null && result is PelangganModel) {
-      setState(() {
-        customers.add(result);
-        _filterCustomers();
-      });
+    if (result == true && mounted) {
+      _loadCustomers();
     }
   }
 
-  void _navigateToEditCustomer(PelangganModel customer) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditCustomerScreen(customer: customer),
-      ),
+  void _navigateToEditCustomer(PelangganModel c) async {
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: false, // Prevent dismiss by tapping outside
+      barrierLabel: '',
+      barrierColor: Colors.black.withOpacity(0.3),
+      transitionDuration: const Duration(milliseconds: 150),
+      pageBuilder: (context, anim1, anim2) {
+        return EditCustomerDialog(customer: c);
+      },
     );
-    if (result != null && result is PelangganModel) {
-      setState(() {
-        int index = customers.indexWhere((c) => c.pelangganID == result.pelangganID);
-        if (index != -1) {
-          customers[index] = result;
-          _filterCustomers();
-        }
-      });
+
+    // Jika result == true, berarti data berhasil diupdate
+    if (result == true && mounted) {
+      // Reload data customers
+      await _loadCustomers();
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Customer updated successfully'),
+            backgroundColor: Color(0xFFE4B169),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
-  void _navigateToDetailCustomer(PelangganModel customer) {
+  void _navigateToDetailCustomer(PelangganModel c) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailCustomerScreen(customer: customer),
-      ),
+      MaterialPageRoute(builder: (_) => DetailCustomerScreen(customer: c)),
     );
   }
 
+  // ================== UI WIDGETS ==================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1D2E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF252837),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Customer Management',
-          style: TextStyle(color: Colors.white, fontSize: 18),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      backgroundColor: const Color(0xFF25292E),
+      body: SafeArea(
         child: Column(
           children: [
-            // Search Bar
-            CustomSearchBar(
-              hintText: 'Search Member',
-              controller: searchController,
-              backgroundColor: const Color(0xFF252837),
-            ),
+            _buildHeader(),
+            _buildSearchBar(),
             const SizedBox(height: 16),
-
-            // Toggle Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: _buildToggleButton(
-                    'All Member',
-                    Icons.people,
-                    showAllMember,
-                    () => setState(() => showAllMember = true),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildToggleButton(
-                    'Add New',
-                    Icons.person_add,
-                    !showAllMember,
-                    _navigateToAddCustomer,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Customer List
-            Expanded(
-              child: filteredCustomers.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No customers found',
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: filteredCustomers.length,
-                      itemBuilder: (context, index) {
-                        return _buildCustomerCard(filteredCustomers[index]);
-                      },
-                    ),
-            ),
+            _buildToggleRow(),
+            const SizedBox(height: 10),
+            _buildCustomerList(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildToggleButton(String text, IconData icon, bool isSelected, VoidCallback onTap) {
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Text(
+            "Customer Management",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: CustomSearchBar(
+        hintText: "Search Member",
+        controller: searchController,
+        backgroundColor: const Color(0xFF2E343B),
+      ),
+    );
+  }
+
+  Widget _buildToggleRow() {
+    return SizedBox(
+      height: 38,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildToggle("All Member", Icons.people, showAllMember, () {
+            setState(() => showAllMember = true);
+          }),
+          const SizedBox(width: 12),
+          _buildToggle("Add New", Icons.person_add, !showAllMember, _navigateToAddCustomer),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerList() {
+    if (_isLoading) {
+      return const Expanded(
+        child: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFE4B169),
+          ),
+        ),
+      );
+    } else if (filteredCustomers.isEmpty) {
+      return const Expanded(
+        child: Center(
+          child: Text(
+            'No customers found',
+            style: TextStyle(color: Colors.white54, fontSize: 16),
+          ),
+        ),
+      );
+    } else {
+      return Expanded(
+        child: RefreshIndicator(
+          color: const Color(0xFFE4B169),
+          onRefresh: _loadCustomers,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredCustomers.length,
+            itemBuilder: (_, i) => _buildCustomerCard(filteredCustomers[i]),
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildToggle(String text, IconData icon, bool selected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        width: 140,
+        height: 40,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE8A547) : const Color(0xFF252837),
-          borderRadius: BorderRadius.circular(25),
+          color: selected ? const Color(0xFFE4B169) : const Color(0xFF2E343B),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? const Color(0xFFE4B169) : Colors.white24,
+            width: 1,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.black : Colors.grey,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
             Text(
               text,
-              style: TextStyle(
-                color: isSelected ? Colors.black : Colors.grey,
-                fontSize: 14,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -213,37 +251,40 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
     );
   }
 
-  Widget _buildCustomerCard(PelangganModel customer) {
-    // TODO: Get dari database
-    String lastTransaction = '20 October 2026';
-    String totalExpenditure = 'Rp 41.000.000';
-
+  Widget _buildCustomerCard(PelangganModel c) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      width: 360,
+      height: 180,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF252837),
+        color: const Color(0xFF2E343B),
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            customer.namaPelanggan,
+            c.namaPelanggan,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+                color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
+          Text(c.alamat ?? "-", style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          const SizedBox(height: 4),
           Text(
-            customer.nomorTelepon ?? 'No phone',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 13,
-              decoration: TextDecoration.underline,
-            ),
+            c.nomorTelepon ?? "-",
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                decoration: TextDecoration.underline),
           ),
           const SizedBox(height: 12),
           Row(
@@ -252,74 +293,59 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Last Transaction',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
+                  const Text("Last Transaction",
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 4),
-                  Text(
-                    lastTransaction,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                  ),
+                  Text(c.lastTransaction ?? "-", style: const TextStyle(color: Colors.white, fontSize: 12)),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    'Total Expenditure',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
+                  const Text("Total Expenditure",
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 4),
                   Text(
-                    totalExpenditure,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    c.totalExpenditure != null
+                        ? "Rp ${c.totalExpenditure!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}"
+                        : "Rp 0",
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const Spacer(),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _navigateToEditCustomer(customer),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE8A547),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Edit',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
+              _buildBtn("Edit", const Color(0xFFE4B169), Colors.white,
+                  () => _navigateToEditCustomer(c)),
               const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _navigateToDetailCustomer(customer),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE74C3C),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Detail',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
+              _buildBtn("Detail", const Color(0xFFBF0505), Colors.white,
+                  () => _navigateToDetailCustomer(c)),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBtn(String text, Color bg, Color fg, VoidCallback onTap) {
+    return SizedBox(
+      width: 95,
+      height: 30,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bg,
+          foregroundColor: fg,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 2,
+        ),
+        child: Text(text,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
       ),
     );
   }
