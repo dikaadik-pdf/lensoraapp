@@ -1,10 +1,11 @@
-// editproduct.dart
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cashierapp_simulationukk2026/models/produk_model.dart';
+import 'package:cashierapp_simulationukk2026/widgets/notification.dart';
+import 'package:cashierapp_simulationukk2026/widgets/confirm_dialog.dart';
 
 class EditProductDialog extends StatefulWidget {
   final ProdukModel product;
@@ -89,7 +90,7 @@ class _EditProductDialogState extends State<EditProductDialog> {
     );
   }
 
-  Future<void> _updateProduct() async {
+  void _confirmUpdateProduct() {
     if (_namaController.text.isEmpty ||
         _hargaController.text.isEmpty ||
         _stokController.text.isEmpty) {
@@ -97,6 +98,22 @@ class _EditProductDialogState extends State<EditProductDialog> {
       return;
     }
 
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (_) => ConfirmationDialog(
+        logoAssetPath: "assets/images/lensoralogo.png",
+        message: "Are You Sure About Updating This Product?",
+        onNoPressed: () => Navigator.pop(context),
+        onYesPressed: () {
+          Navigator.pop(context); // Close confirmation
+          _updateProduct();
+        },
+      ),
+    );
+  }
+
+  Future<void> _updateProduct() async {
     try {
       setState(() => _loading = true);
 
@@ -125,7 +142,19 @@ class _EditProductDialogState extends State<EditProductDialog> {
 
       if (mounted) {
         setState(() => _loading = false);
-        Navigator.pop(context, true);
+        
+        // Show success notification on top of edit dialog
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (notifContext) => SuccessNotificationDialog(
+            message: "Product updated\nsuccessfully!",
+            onOkPressed: () {
+              Navigator.of(notifContext).pop(); // Close notification
+              Navigator.of(context).pop(true); // Close edit dialog
+            },
+          ),
+        );
       }
     } catch (e) {
       setState(() => _loading = false);
@@ -174,9 +203,6 @@ class _EditProductDialogState extends State<EditProductDialog> {
                 _label("Product Image"),
                 const SizedBox(height: 6),
 
-                // ------------------------------------------
-                // IMAGE UPLOAD WITHOUT BORDER (CLEAN VERSION)
-                // ------------------------------------------
                 Align(
                   alignment: Alignment.center,
                   child: Container(
@@ -278,14 +304,13 @@ class _EditProductDialogState extends State<EditProductDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // CANCEL BUTTON
                     SizedBox(
                       width: 100,
                       height: 35,
                       child: ElevatedButton(
                         onPressed: _loading ? null : () => Navigator.pop(context, false),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade700,
+                          backgroundColor: const Color(0xFFD32F2F),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child: const Text("Cancel", style: TextStyle(color: Colors.white)),
@@ -293,12 +318,11 @@ class _EditProductDialogState extends State<EditProductDialog> {
                     ),
                     const SizedBox(width: 20),
 
-                    // UPDATE BUTTON
                     SizedBox(
                       width: 100,
                       height: 35,
                       child: ElevatedButton(
-                        onPressed: _loading ? null : () => _updateProduct(),
+                        onPressed: _loading ? null : _confirmUpdateProduct,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFFA500),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

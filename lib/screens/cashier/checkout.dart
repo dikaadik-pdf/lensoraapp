@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cashierapp_simulationukk2026/models/pelanggan_models.dart';
 import 'package:cashierapp_simulationukk2026/screens/cashier/cartitem_models.dart';
@@ -118,13 +118,11 @@ class _CheckoutConfirmationDialogState
         context: context,
         barrierDismissible: false,
         builder: (context) => SuccessNotificationDialog(
-          title: 'Payment Success!',
           message: 'Transaction has been completed successfully',
           onOkPressed: () => Navigator.pop(context),
         ),
       );
 
-      // Langsung navigasi ke ReceiptPage
       if (!mounted) return;
       await Navigator.push(
         context,
@@ -153,9 +151,9 @@ class _CheckoutConfirmationDialogState
       Navigator.of(context).pop({'success': true});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error processing checkout: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error processing checkout: $e')));
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
@@ -298,13 +296,7 @@ class _CheckoutConfirmationDialogState
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 14,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
         Flexible(
           child: Text(
             value,

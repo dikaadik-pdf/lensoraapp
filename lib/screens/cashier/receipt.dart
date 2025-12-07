@@ -49,15 +49,13 @@ class _ReceiptPageState extends State<ReceiptPage> {
 
   Future<void> loadCashierName() async {
     try {
-      // Get current user
       final user = Supabase.instance.client.auth.currentUser;
-      
+
       print('=== DEBUG CASHIER ===');
       print('Current User: ${user?.id}');
       print('User Email: ${user?.email}');
 
       if (user != null) {
-        // Coba ambil dari tabel users
         final response = await Supabase.instance.client
             .from("users")
             .select("email, role")
@@ -73,7 +71,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
           });
           print('Cashier name set to: $cashierName');
         } else {
-          // Fallback ke email dari auth jika tidak ada di tabel users
           setState(() {
             cashierName = user.email ?? "Unknown";
             isLoading = false;
@@ -89,8 +86,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
       }
     } catch (e) {
       print('Error loading cashier name: $e');
-      
-      // Fallback ke email dari auth current user
+
       final user = Supabase.instance.client.auth.currentUser;
       setState(() {
         cashierName = user?.email ?? "Unknown";
@@ -102,7 +98,9 @@ class _ReceiptPageState extends State<ReceiptPage> {
   Future<void> printReceipt() async {
     final pdf = pw.Document();
 
-    final fdate = DateFormat("dd MMMM yyyy HH:mm").format(widget.transactionDate);
+    final fdate = DateFormat(
+      "dd MMMM yyyy HH:mm",
+    ).format(widget.transactionDate);
 
     pdf.addPage(
       pw.Page(
@@ -111,31 +109,37 @@ class _ReceiptPageState extends State<ReceiptPage> {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Header
               pw.Center(
                 child: pw.Text(
                   "Lensora",
-                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ),
               pw.Center(
                 child: pw.Text(
                   "Capture",
-                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ),
               pw.SizedBox(height: 8),
-              
-              // Transaction Number
+
               pw.Center(
                 child: pw.Text(
                   widget.transactionNumber,
-                  style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ),
               pw.SizedBox(height: 6),
-              
-              // Date and Cashier
+
               pw.Center(
                 child: pw.Text(
                   "Date: $fdate",
@@ -148,27 +152,28 @@ class _ReceiptPageState extends State<ReceiptPage> {
                   style: const pw.TextStyle(fontSize: 9),
                 ),
               ),
-              
+
               pw.SizedBox(height: 8),
               pw.Divider(thickness: 1),
               pw.SizedBox(height: 4),
 
-              // Customer
               pw.Text(
                 "Customer: ${widget.customer.namaPelanggan}",
                 style: const pw.TextStyle(fontSize: 10),
               ),
-              
+
               pw.SizedBox(height: 4),
               pw.Divider(thickness: 1),
               pw.SizedBox(height: 8),
 
-              // Table Header
               pw.Row(
                 children: [
                   pw.Expanded(
                     flex: 3,
-                    child: pw.Text("Item", style: const pw.TextStyle(fontSize: 9)),
+                    child: pw.Text(
+                      "Item",
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
                   ),
                   pw.Expanded(
                     flex: 1,
@@ -191,7 +196,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
 
               pw.SizedBox(height: 6),
 
-              // Items
               pw.Column(
                 children: widget.cartItems.map((e) {
                   return pw.Padding(
@@ -241,17 +245,15 @@ class _ReceiptPageState extends State<ReceiptPage> {
               pw.Divider(thickness: 1),
               pw.SizedBox(height: 4),
 
-              // Totals
               _pdfPrice("Subtotal", widget.subtotal),
               if (widget.discount > 0) _pdfPrice("Discount", widget.discount),
               pw.SizedBox(height: 4),
               _pdfPrice("Total", widget.total, bold: true),
-              
+
               pw.SizedBox(height: 4),
               pw.Divider(thickness: 1),
               pw.SizedBox(height: 4),
 
-              // Payment Info
               _pdfInfo("Payment Method", widget.paymentMethod),
 
               if (widget.paymentMethod == "Cash") ...[
@@ -319,7 +321,9 @@ class _ReceiptPageState extends State<ReceiptPage> {
 
   @override
   Widget build(BuildContext context) {
-    final fdate = DateFormat("dd MMMM yyyy HH:mm").format(widget.transactionDate);
+    final fdate = DateFormat(
+      "dd MMMM yyyy HH:mm",
+    ).format(widget.transactionDate);
 
     return Scaffold(
       backgroundColor: const Color(0xFF25292E),
@@ -338,7 +342,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Container Struk
               Container(
                 width: 390,
                 constraints: const BoxConstraints(minHeight: 620),
@@ -350,182 +353,176 @@ class _ReceiptPageState extends State<ReceiptPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                // Logo
-                Image.asset("assets/images/lensoralogo.png", width: 80, height: 80),
+                    Image.asset(
+                      "assets/images/lensoralogo.png",
+                      width: 80,
+                      height: 80,
+                    ),
 
-                const SizedBox(height: 16),
-                
-                // Transaction Number
-                Text(
-                  widget.transactionNumber,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                    const SizedBox(height: 16),
 
-                const SizedBox(height: 8),
-                
-                // Date
-                Text(
-                  fdate,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                
-                const SizedBox(height: 4),
-                
-                // Cashier
-                Text(
-                  isLoading ? "Cashier: Loading..." : "Cashier: $cashierName",
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-
-                const SizedBox(height: 20),
-                const Divider(color: Colors.grey, thickness: 1),
-                const SizedBox(height: 12),
-
-                // Customer
-                _info("Customer", widget.customer.namaPelanggan),
-
-                const SizedBox(height: 12),
-                const Divider(color: Colors.grey, thickness: 1),
-                const SizedBox(height: 16),
-
-                // Table Header
-                const Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        "Item",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
+                    Text(
+                      widget.transactionNumber,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Expanded(
-                      flex: 1,
-                      child: Text(
-                        "Qty",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        "Price",
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
 
-                const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
-                // Items
-                ...widget.cartItems.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Text(
+                      fdate,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      isLoading
+                          ? "Cashier: Loading..."
+                          : "Cashier: $cashierName",
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+
+                    const SizedBox(height: 20),
+                    const Divider(color: Colors.grey, thickness: 1),
+                    const SizedBox(height: 12),
+
+                    _info("Customer", widget.customer.namaPelanggan),
+
+                    const SizedBox(height: 12),
+                    const Divider(color: Colors.grey, thickness: 1),
+                    const SizedBox(height: 16),
+                    const Row(
                       children: [
                         Expanded(
                           flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.product.namaProduk,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                "Rp ${NumberFormat('#,###', 'id_ID').format(item.product.harga)}",
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            "Item",
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         Expanded(
                           flex: 1,
                           child: Text(
-                            "${item.quantity}x",
+                            "Qty",
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
                             ),
                           ),
                         ),
                         Expanded(
                           flex: 2,
                           child: Text(
-                            "Rp ${NumberFormat('#,###', 'id_ID').format(item.subtotal)}",
+                            "Price",
                             textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  );
-                }),
 
-                const SizedBox(height: 8),
-                const Divider(color: Colors.grey, thickness: 1),
-                const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                    ...widget.cartItems.map((item) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.product.namaProduk,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Rp ${NumberFormat('#,###', 'id_ID').format(item.product.harga)}",
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                "${item.quantity}x",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                "Rp ${NumberFormat('#,###', 'id_ID').format(item.subtotal)}",
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
 
-                // Totals
-                _price("Subtotal", widget.subtotal),
-                const SizedBox(height: 6),
-                if (widget.discount > 0) ...[
-                  _price("Discount", widget.discount),
-                  const SizedBox(height: 6),
-                ],
-                _price("Total", widget.total, bold: true),
+                    const SizedBox(height: 8),
+                    const Divider(color: Colors.grey, thickness: 1),
+                    const SizedBox(height: 12),
 
-                const SizedBox(height: 12),
-                const Divider(color: Colors.grey, thickness: 1),
-                const SizedBox(height: 12),
+                    _price("Subtotal", widget.subtotal),
+                    const SizedBox(height: 6),
+                    if (widget.discount > 0) ...[
+                      _price("Discount", widget.discount),
+                      const SizedBox(height: 6),
+                    ],
+                    _price("Total", widget.total, bold: true),
 
-                // Payment Info
-                _info("Payment Method", widget.paymentMethod),
+                    const SizedBox(height: 12),
+                    const Divider(color: Colors.grey, thickness: 1),
+                    const SizedBox(height: 12),
 
-                if (widget.paymentMethod == "Cash") ...[
-                  const SizedBox(height: 6),
-                  _price("Cash", widget.cashAmount),
-                  const SizedBox(height: 6),
-                  _price("Refund", widget.refund, bold: true),
-                ],
+                    _info("Payment Method", widget.paymentMethod),
+
+                    if (widget.paymentMethod == "Cash") ...[
+                      const SizedBox(height: 6),
+                      _price("Cash", widget.cashAmount),
+                      const SizedBox(height: 6),
+                      _price("Refund", widget.refund, bold: true),
+                    ],
                   ],
                 ),
               ),
-              
-              // Buttons - Terpisah dari container struk
+
               const SizedBox(height: 20),
-              
+
               SizedBox(
                 width: 333,
                 height: 52,
@@ -547,16 +544,16 @@ class _ReceiptPageState extends State<ReceiptPage> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               SizedBox(
                 width: 333,
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color (0xFF3A4C5E),
+                    backgroundColor: const Color(0xFF3A4C5E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -582,10 +579,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
         Text(
           value,
           style: const TextStyle(

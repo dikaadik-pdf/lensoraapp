@@ -17,23 +17,23 @@ class StokLogModel {
 
   factory StokLogModel.fromJson(Map<String, dynamic> json) {
     return StokLogModel(
-      id: json['ID'],
-      idProduk: json['ID_Produk'],
-      perubahan: json['Perubahan'],
-      keterangan: json['Keterangan'],
-      tanggal: DateTime.parse(json['Tanggal']),
-      idUser: json['ID_User'],
+      id: json['id'],
+      idProduk: json['id_produk'],
+      perubahan: json['perubahan'],
+      keterangan: json['keterangan'],
+      tanggal: DateTime.parse(json['tanggal']),
+      idUser: json['id_user'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'ID': id,
-      'ID_Produk': idProduk,
-      'Perubahan': perubahan,
-      'Keterangan': keterangan,
-      'Tanggal': tanggal.toIso8601String(),
-      'ID_User': idUser,
+      'id': id,
+      'id_produk': idProduk,
+      'perubahan': perubahan,
+      'keterangan': keterangan,
+      'tanggal': tanggal.toIso8601String(),
+      'id_user': idUser,
     };
   }
 }

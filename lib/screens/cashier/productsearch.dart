@@ -66,9 +66,9 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
 
   void _selectProduct(ProdukModel product) {
     if (product.stok <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product out of stock')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Product out of stock')));
       return;
     }
     Navigator.pop(context, product);
@@ -87,7 +87,6 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
         ),
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -103,19 +102,21 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close, color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ],
               ),
             ),
 
-            // Content
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Column(
                   children: [
-                    // Search Bar
                     Container(
                       width: 290,
                       height: 40,
@@ -125,11 +126,21 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
                       ),
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                         decoration: const InputDecoration(
                           hintText: 'Search Product',
-                          hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                          prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
+                          hintStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Colors.grey,
+                            size: 20,
+                          ),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 10),
                         ),
@@ -138,7 +149,6 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
 
                     const SizedBox(height: 16),
 
-                    // Product List
                     Expanded(
                       child: _isLoading
                           ? const Center(
@@ -147,22 +157,22 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
                               ),
                             )
                           : _filteredProducts.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    'No products found',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  itemCount: _filteredProducts.length,
-                                  itemBuilder: (context, index) {
-                                    final product = _filteredProducts[index];
-                                    return _buildProductCard(product);
-                                  },
+                          ? const Center(
+                              child: Text(
+                                'No products found',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
                                 ),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _filteredProducts.length,
+                              itemBuilder: (context, index) {
+                                final product = _filteredProducts[index];
+                                return _buildProductCard(product);
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -210,7 +220,9 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
                   Text(
                     'Rp ${product.harga.toStringAsFixed(0)}',
                     style: TextStyle(
-                      color: isOutOfStock ? Colors.grey : const Color(0xFFE4B169),
+                      color: isOutOfStock
+                          ? Colors.grey
+                          : const Color(0xFFE4B169),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -224,8 +236,8 @@ class _ProductSearchDialogState extends State<ProductSearchDialog> {
                       color: isOutOfStock
                           ? Colors.red
                           : isLowStock
-                              ? Colors.orange
-                              : Colors.green,
+                          ? Colors.orange
+                          : Colors.green,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(

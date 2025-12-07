@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cashierapp_simulationukk2026/models/pelanggan_models.dart';
-import 'package:cashierapp_simulationukk2026/services/helpercustomer.dart';
 import 'package:cashierapp_simulationukk2026/widgets/search_bar.dart';
+import 'package:cashierapp_simulationukk2026/widgets/notification.dart';
+import 'package:cashierapp_simulationukk2026/widgets/confirm_dialog.dart';
+import 'package:intl/intl.dart';
 import 'addcustomer.dart';
 import 'editcustomer.dart';
 import 'detailcustomer.dart';
@@ -37,11 +40,54 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   Future<void> _loadCustomers() async {
     setState(() => _isLoading = true);
     try {
-      final data = await PelangganDatabaseHelper.getAllPelanggan();
+      final supabase = Supabase.instance.client;
+      
+      // Get all customers
+      final customerResponse = await supabase
+          .from('pelanggan')
+          .select('*')
+          .order('pelangganid', ascending: false);
+
+      List<PelangganModel> customerList = [];
+
+      for (var customerData in customerResponse) {
+        final customerId = customerData['pelangganid'];
+        
+        // Get transaction summary for this customer
+        final transactionResponse = await supabase
+            .from('penjualan')
+            .select('grandtotal, tanggalpenjualan')
+            .eq('pelangganid', customerId)
+            .order('tanggalpenjualan', ascending: false);
+
+        double totalExpenditure = 0;
+        String? lastTransaction;
+
+        if (transactionResponse.isNotEmpty) {
+          // Calculate total expenditure
+          for (var tx in transactionResponse) {
+            totalExpenditure += (tx['grandtotal'] as num).toDouble();
+          }
+
+          // Get last transaction date
+          final lastTxDate = DateTime.parse(transactionResponse[0]['tanggalpenjualan']);
+          lastTransaction = DateFormat('dd/MM/yyyy').format(lastTxDate);
+        }
+
+        customerList.add(PelangganModel(
+          pelangganID: customerId,
+          namaPelanggan: customerData['namapelanggan'],
+          alamat: customerData['alamat'],
+          nomorTelepon: customerData['nomortelepon'],
+          totalExpenditure: totalExpenditure,
+          lastTransaction: lastTransaction ?? '-',
+        ));
+      }
+
       if (mounted) {
         setState(() {
-          customers = data;
-          filteredCustomers = data;
+          customers = customerList;
+          filteredCustomers = customerList;
           _isLoading = false;
         });
       }
@@ -82,7 +128,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   void _navigateToEditCustomer(PelangganModel c) async {
     final result = await showGeneralDialog<bool>(
       context: context,
-      barrierDismissible: false, // Prevent dismiss by tapping outside
+      barrierDismissible: false,
       barrierLabel: '',
       barrierColor: Colors.black.withOpacity(0.3),
       transitionDuration: const Duration(milliseconds: 150),
@@ -91,21 +137,8 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
       },
     );
 
-    // Jika result == true, berarti data berhasil diupdate
     if (result == true && mounted) {
-      // Reload data customers
       await _loadCustomers();
-      
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Customer updated successfully'),
-            backgroundColor: Color(0xFFE4B169),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
     }
   }
 
@@ -114,6 +147,52 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
       context,
       MaterialPageRoute(builder: (_) => DetailCustomerScreen(customer: c)),
     );
+  }
+
+  void _confirmDeleteCustomer(PelangganModel customer) {
+    showDialog(
+      context: context,
+      builder: (_) => ConfirmationDialog(
+        logoAssetPath: "assets/images/lensoralogo.png",
+        message: "Are You Sure About Deleting This Customer?",
+        onNoPressed: () => Navigator.pop(context),
+        onYesPressed: () {
+          Navigator.pop(context);
+          _deleteCustomer(customer);
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteCustomer(PelangganModel customer) async {
+    try {
+      await Supabase.instance.client
+          .from('pelanggan')
+          .delete()
+          .eq('pelangganid', customer.pelangganID!);
+      
+      if (mounted) {
+        await _loadCustomers();
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => SuccessNotificationDialog(
+            message: "Customer deleted\nsuccessfully!",
+            onOkPressed: () => Navigator.pop(context),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting customer: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // ================== UI WIDGETS ==================
@@ -296,7 +375,10 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
                   const Text("Last Transaction",
                       style: TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 4),
-                  Text(c.lastTransaction ?? "-", style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  Text(
+                    c.lastTransaction ?? "-",
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ],
               ),
               Column(
@@ -306,8 +388,8 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
                       style: TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 4),
                   Text(
-                    c.totalExpenditure != null
-                        ? "Rp ${c.totalExpenditure!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}"
+                    c.totalExpenditure != null && c.totalExpenditure! > 0
+                        ? "Rp ${NumberFormat('#,###', 'id_ID').format(c.totalExpenditure)}"
                         : "Rp 0",
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
@@ -322,8 +404,11 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
               _buildBtn("Edit", const Color(0xFFE4B169), Colors.white,
                   () => _navigateToEditCustomer(c)),
               const SizedBox(width: 12),
-              _buildBtn("Detail", const Color(0xFFBF0505), Colors.white,
+              _buildBtn("Detail", const Color(0xFF3A4C5E), Colors.white,
                   () => _navigateToDetailCustomer(c)),
+              const SizedBox(width: 12),
+              _buildBtn("Delete", const Color(0xFFBF0505), Colors.white,
+                  () => _confirmDeleteCustomer(c)),
             ],
           ),
         ],
@@ -333,7 +418,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
 
   Widget _buildBtn(String text, Color bg, Color fg, VoidCallback onTap) {
     return SizedBox(
-      width: 95,
+      width: 75,
       height: 30,
       child: ElevatedButton(
         onPressed: onTap,
@@ -345,7 +430,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
           elevation: 2,
         ),
         child: Text(text,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11)),
       ),
     );
   }

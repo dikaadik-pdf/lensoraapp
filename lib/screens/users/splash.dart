@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cashierapp_simulationukk2026/screens/users/loginapp.dart';
-import 'package:cashierapp_simulationukk2026/screens/users/signupapp.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -51,62 +50,14 @@ class SplashScreen extends StatelessWidget {
                     'Welcome!',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: 40,
                       fontWeight: FontWeight.w900,
                       fontFamily: 'Poppins',
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 70),
 
-                  /// BUTTON REGISTER
-                  SizedBox(
-                    width: 280,
-                    height: 56,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF56768A),
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterPage(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Register',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  /// Teks "Or"
-                  Padding(
-                    padding: const EdgeInsets.only(left: 130),
-                    child: Text(
-                      "Or",
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
 
                   /// BUTTON LOGIN
                   SizedBox(
@@ -127,7 +78,7 @@ class SplashScreen extends StatelessWidget {
                         );
                       },
                       child: const Text(
-                        'Log In',
+                        'Go To App →',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,

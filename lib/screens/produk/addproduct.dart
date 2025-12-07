@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cashierapp_simulationukk2026/widgets/notification.dart';
+import 'package:cashierapp_simulationukk2026/widgets/confirm_dialog.dart';
 
 class AddProductDialog extends StatefulWidget {
   const AddProductDialog({super.key});
@@ -76,7 +78,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
     );
   }
 
-  Future<void> _saveProduct() async {
+  void _confirmSaveProduct() {
     if (_namaController.text.isEmpty ||
         _hargaController.text.isEmpty ||
         _stokController.text.isEmpty) {
@@ -84,6 +86,22 @@ class _AddProductDialogState extends State<AddProductDialog> {
       return;
     }
 
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (_) => ConfirmationDialog(
+        logoAssetPath: "assets/images/lensoralogo.png",
+        message: "Are You Sure About Adding This Product?",
+        onNoPressed: () => Navigator.pop(context),
+        onYesPressed: () {
+          Navigator.pop(context); // Close confirmation
+          _saveProduct();
+        },
+      ),
+    );
+  }
+
+  Future<void> _saveProduct() async {
     try {
       setState(() => _loading = true);
 
@@ -113,7 +131,19 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
       if (mounted) {
         setState(() => _loading = false);
-        Navigator.pop(context, true);
+        
+        // Show success notification on top of add dialog
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (notifContext) => SuccessNotificationDialog(
+            message: "Product added\nsuccessfully!",
+            onOkPressed: () {
+              Navigator.of(notifContext).pop(); // Close notification
+              Navigator.of(context).pop(true); // Close add dialog
+            },
+          ),
+        );
       }
     } catch (e) {
       setState(() => _loading = false);
@@ -162,9 +192,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 _label("Product Image"),
                 const SizedBox(height: 6),
 
-                // ================================
-                //  MATCHED IMAGE BOX (NO BORDER)
-                // ================================
                 Align(
                   alignment: Alignment.center,
                   child: Container(
@@ -271,12 +298,11 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // CANCEL
                     SizedBox(
                       width: 100,
                       height: 35,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _loading ? null : () => Navigator.pop(context, false),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red.shade700,
                           shape: RoundedRectangleBorder(
@@ -290,12 +316,11 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
                     const SizedBox(width: 20),
 
-                    // SAVE
                     SizedBox(
                       width: 100,
                       height: 35,
                       child: ElevatedButton(
-                        onPressed: _loading ? null : _saveProduct,
+                        onPressed: _loading ? null : _confirmSaveProduct,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFFA500),
                           shape: RoundedRectangleBorder(

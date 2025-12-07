@@ -41,12 +41,14 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
           .order('namapelanggan', ascending: true);
 
       _customers = (response as List)
-          .map((json) => PelangganModel(
-                pelangganID: json['pelangganid'],
-                namaPelanggan: json['namapelanggan'],
-                alamat: json['alamat'],
-                nomorTelepon: json['nomortelepon'],
-              ))
+          .map(
+            (json) => PelangganModel(
+              pelangganID: json['pelangganid'],
+              namaPelanggan: json['namapelanggan'],
+              alamat: json['alamat'],
+              nomorTelepon: json['nomortelepon'],
+            ),
+          )
           .toList();
 
       _filteredCustomers = _customers;
@@ -109,12 +111,12 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.pop(context), // tap luar close
+      onTap: () => Navigator.pop(context),
       child: Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(20),
         child: GestureDetector(
-          onTap: () {}, // biar konten dalam dialog tidak close
+          onTap: () {},
           child: Container(
             width: 390,
             height: 540,
@@ -126,7 +128,6 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
               children: [
                 const SizedBox(height: 20),
 
-                /// TITLE CENTER
                 const Center(
                   child: Text(
                     'Choose Customer',
@@ -146,7 +147,6 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        /// WALK IN (NO INNER BOX)
                         GestureDetector(
                           onTap: _toggleWalkIn,
                           child: Container(
@@ -187,8 +187,11 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: _showWalkInInput
-                                          ? const Icon(Icons.check,
-                                              color: Colors.white, size: 16)
+                                          ? const Icon(
+                                              Icons.check,
+                                              color: Colors.white,
+                                              size: 16,
+                                            )
                                           : null,
                                     ),
                                   ],
@@ -204,23 +207,27 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
                                           height: 40,
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF25292E),
-                                            borderRadius:
-                                                BorderRadius.circular(25),
+                                            borderRadius: BorderRadius.circular(
+                                              25,
+                                            ),
                                           ),
                                           child: TextField(
                                             controller: _walkInNameController,
                                             style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 13),
+                                              color: Colors.white,
+                                              fontSize: 13,
+                                            ),
                                             decoration: const InputDecoration(
                                               hintText: 'Enter customer name',
                                               hintStyle: TextStyle(
-                                                  color: Colors.grey,
-                                                  fontSize: 12),
+                                                color: Colors.grey,
+                                                fontSize: 12,
+                                              ),
                                               border: InputBorder.none,
                                               contentPadding:
                                                   EdgeInsets.symmetric(
-                                                      horizontal: 14),
+                                                    horizontal: 14,
+                                                  ),
                                             ),
                                           ),
                                         ),
@@ -233,16 +240,20 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
                                           height: 32,
                                           decoration: BoxDecoration(
                                             color: const Color(0xFFE4B169),
-                                            borderRadius:
-                                                BorderRadius.circular(6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
-                                          child: const Icon(Icons.check,
-                                              color: Colors.white, size: 18),
+                                          child: const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
                                         ),
-                                      )
+                                      ),
                                     ],
                                   ),
-                                ]
+                                ],
                               ],
                             ),
                           ),
@@ -250,15 +261,18 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
 
                         const SizedBox(height: 20),
 
-                        /// Divider OR
                         Row(
                           children: [
                             Expanded(
-                                child: Divider(
-                                    color: Colors.grey[600], thickness: 1)),
+                              child: Divider(
+                                color: Colors.grey[600],
+                                thickness: 1,
+                              ),
+                            ),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               child: Text(
                                 "Or",
                                 style: TextStyle(
@@ -268,14 +282,16 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
                               ),
                             ),
                             Expanded(
-                                child: Divider(
-                                    color: Colors.grey[600], thickness: 1)),
+                              child: Divider(
+                                color: Colors.grey[600],
+                                thickness: 1,
+                              ),
+                            ),
                           ],
                         ),
 
                         const SizedBox(height: 20),
 
-                        /// MEMBER TITLE
                         const Text(
                           'Member',
                           style: TextStyle(
@@ -287,7 +303,6 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
 
                         const SizedBox(height: 14),
 
-                        /// SEARCH BAR
                         Container(
                           height: 42,
                           decoration: BoxDecoration(
@@ -297,13 +312,20 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
                           child: TextField(
                             controller: _searchController,
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 14),
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
                             decoration: const InputDecoration(
                               hintText: 'Search Member',
-                              hintStyle:
-                                  TextStyle(color: Colors.grey, fontSize: 14),
-                              prefixIcon: Icon(Icons.search,
-                                  color: Colors.grey, size: 20),
+                              hintStyle: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: Colors.grey,
+                                size: 20,
+                              ),
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.only(top: 10),
                             ),
@@ -312,76 +334,72 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
 
                         const SizedBox(height: 18),
 
-                        /// LIST CUSTOMER
                         Expanded(
                           child: _isLoading
                               ? const Center(
                                   child: CircularProgressIndicator(
-                                      color: Color(0xFFE4B169)),
+                                    color: Color(0xFFE4B169),
+                                  ),
                                 )
                               : _filteredCustomers.isEmpty
-                                  ? const Center(
-                                      child: Text(
-                                        'No customers found',
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    )
-                                  : ListView.builder(
-                                      itemCount:
-                                          _filteredCustomers.length,
-                                      itemBuilder: (context, index) {
-                                        final customer =
-                                            _filteredCustomers[index];
+                              ? const Center(
+                                  child: Text(
+                                    'No customers found',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: _filteredCustomers.length,
+                                  itemBuilder: (context, index) {
+                                    final customer = _filteredCustomers[index];
 
-                                        return GestureDetector(
-                                          onTap: () =>
-                                              _selectCustomer(customer),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(14),
-                                            margin: const EdgeInsets.only(
-                                                bottom: 10),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF3A4C5E),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
+                                    return GestureDetector(
+                                      onTap: () => _selectCustomer(customer),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(14),
+                                        margin: const EdgeInsets.only(
+                                          bottom: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF3A4C5E),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              customer.namaPelanggan,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  customer.namaPelanggan,
+                                            if (customer.nomorTelepon != null)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 4,
+                                                ),
+                                                child: Text(
+                                                  customer.nomorTelepon!,
                                                   style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                    fontWeight:
-                                                        FontWeight.w600,
+                                                    color: Colors.grey,
+                                                    fontSize: 12,
                                                   ),
                                                 ),
-                                                if (customer.nomorTelepon !=
-                                                    null)
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 4),
-                                                    child: Text(
-                                                      customer.nomorTelepon!,
-                                                      style:
-                                                          const TextStyle(
-                                                        color: Colors.grey,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                         ),
                       ],
                     ),

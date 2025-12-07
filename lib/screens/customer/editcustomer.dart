@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cashierapp_simulationukk2026/models/pelanggan_models.dart';
 import 'package:cashierapp_simulationukk2026/services/helpercustomer.dart';
+import 'package:cashierapp_simulationukk2026/widgets/notification.dart';
+import 'package:cashierapp_simulationukk2026/widgets/confirm_dialog.dart';
 
 class EditCustomerDialog extends StatefulWidget {
   final PelangganModel customer;
@@ -79,12 +81,28 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
     );
   }
 
-  Future<void> _updateCustomer() async {
+  void _confirmUpdateCustomer() {
     if (_nameController.text.trim().isEmpty) {
       _showError("Name can't be empty!");
       return;
     }
 
+  
+    showDialog(
+      context: context,
+      builder: (_) => ConfirmationDialog(
+        logoAssetPath: "assets/images/lensoralogo.png",
+        message: "Are You Sure About Updating This Customer?",
+        onNoPressed: () => Navigator.pop(context),
+        onYesPressed: () {
+          Navigator.pop(context); 
+          _updateCustomer();
+        },
+      ),
+    );
+  }
+
+  Future<void> _updateCustomer() async {
     setState(() => _loading = true);
 
     try {
@@ -109,8 +127,21 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
       if (!mounted) return;
 
       if (result != null) {
-        // Tutup dialog dengan return true untuk trigger reload
-        Navigator.of(context).pop(true);
+        setState(() => _loading = false);
+        Navigator.of(context).pop(); 
+        
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => SuccessNotificationDialog(
+            message: "Customer updated\nsuccessfully!",
+            onOkPressed: () {
+              Navigator.pop(context); 
+              Navigator.pop(context, true); 
+            },
+          ),
+        );
       } else {
         setState(() => _loading = false);
         _showError("Failed to update customer");
@@ -147,12 +178,12 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
     return Material(
       type: MaterialType.transparency,
       child: GestureDetector(
-        onTap: () {}, // Prevent closing when tapping on dialog
+        onTap: () {}, 
         child: Container(
           color: Colors.black.withOpacity(0.5),
           child: Center(
             child: GestureDetector(
-              onTap: () {}, // Prevent tap from propagating
+              onTap: () {}, 
               child: Container(
                 width: 345,
                 height: 655,
@@ -225,7 +256,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
                             Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                onTap: _loading ? null : _updateCustomer,
+                                onTap: _loading ? null : _confirmUpdateCustomer,
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
                                   width: 100,

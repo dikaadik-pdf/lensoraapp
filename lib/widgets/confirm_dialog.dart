@@ -19,49 +19,54 @@ class ConfirmationDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 330,
+        width: 300,
+        height: 210,
         decoration: BoxDecoration(
           color: const Color(0xFF3A4C5E),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // LOGO
+              // LOGO dari assets lokal
               Image.asset(
                 logoAssetPath,
-                height: 50,
+                height: 45,
                 fit: BoxFit.contain,
               ),
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
 
-              // MESSAGE (Tengah, Bold)
+              // MESSAGE
               Text(
                 message,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w600,
                   height: 1.3,
                 ),
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 26),
+              const SizedBox(height: 20),
 
               // BUTTON NO & YES
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // NO BUTTON — Merah
-                  Expanded(
+                  SizedBox(
+                    width: 100,
+                    height: 35,
                     child: ElevatedButton(
                       onPressed: onNoPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFBF0505),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -77,15 +82,17 @@ class ConfirmationDialog extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
 
                   // YES BUTTON — Abu Gelap
-                  Expanded(
+                  SizedBox(
+                    width: 100,
+                    height: 35,
                     child: ElevatedButton(
                       onPressed: onYesPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2E343B),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

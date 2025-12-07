@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cashierapp_simulationukk2026/models/pelanggan_models.dart';
 import 'package:cashierapp_simulationukk2026/services/helpercustomer.dart';
+import 'package:cashierapp_simulationukk2026/widgets/notification.dart';
+import 'package:cashierapp_simulationukk2026/widgets/confirm_dialog.dart';
 
 class AddCustomerScreen extends StatefulWidget {
   const AddCustomerScreen({Key? key}) : super(key: key);
@@ -16,12 +18,28 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   bool _loading = false;
   bool _allMemberHovered = false;
 
-  Future<void> _saveCustomer() async {
+  void _confirmSaveCustomer() {
     if (_nameController.text.trim().isEmpty) {
       _showError('Name is required!');
       return;
     }
 
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (_) => ConfirmationDialog(
+        logoAssetPath: "assets/images/lensoralogo.png",
+        message: "Are You Sure About Adding This Customer?",
+        onNoPressed: () => Navigator.pop(context),
+        onYesPressed: () {
+          Navigator.pop(context); // Close confirmation
+          _saveCustomer();
+        },
+      ),
+    );
+  }
+
+  Future<void> _saveCustomer() async {
     setState(() => _loading = true);
 
     try {
@@ -36,10 +54,19 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       if (result != null) {
         if (mounted) {
           setState(() => _loading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Customer added successfully!'), backgroundColor: Colors.green),
+          
+          // Show success notification
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => SuccessNotificationDialog(
+              message: "Customer added\nsuccessfully!",
+              onOkPressed: () {
+                Navigator.pop(context); // Close notification
+                Navigator.pop(context, true); // Return to list with refresh
+              },
+            ),
           );
-          Navigator.pop(context, true);
         }
       } else {
         throw Exception('Failed to add customer');
@@ -54,10 +81,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(msg),
+        backgroundColor: const Color(0xFF2C3E50),
+        title: const Text('Error', style: TextStyle(color: Colors.white)),
+        content: Text(msg, style: const TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Color(0xFFE4B169))),
+          ),
         ],
       ),
     );
@@ -119,14 +150,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
+                            children: const [
                               Icon(
                                 Icons.person,
                                 color: Colors.white,
                                 size: 15,
                               ),
-                              const SizedBox(width: 6),
-                              const Text(
+                              SizedBox(width: 6),
+                              Text(
                                 'All Member',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -150,14 +181,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                        children: const [
                           Icon(
                             Icons.person_add,
                             color: Colors.white,
                             size: 15,
                           ),
-                          const SizedBox(width: 6),
-                          const Text(
+                          SizedBox(width: 6),
+                          Text(
                             'Add Member',
                             style: TextStyle(
                               color: Colors.white,
@@ -173,8 +204,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 const SizedBox(height: 30),
                 
                 // Title
-                Center(
-                  child: const Text(
+                const Center(
+                  child: Text(
                     'Add a New Member',
                     style: TextStyle(
                       color: Colors.white,
@@ -263,7 +294,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   child: SizedBox(
                     width: 120,
                     child: ElevatedButton(
-                      onPressed: _loading ? null : _saveCustomer,
+                      onPressed: _loading ? null : _confirmSaveCustomer,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE4B169),
                         padding: const EdgeInsets.symmetric(vertical: 12),

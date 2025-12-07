@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cashierapp_simulationukk2026/models/produk_model.dart';
 import 'package:cashierapp_simulationukk2026/widgets/search_bar.dart';
+import 'package:cashierapp_simulationukk2026/widgets/notification.dart';
 import 'addproduct.dart';
 import 'editproduct.dart';
 import 'package:cashierapp_simulationukk2026/widgets/confirm_dialog.dart';
@@ -77,14 +78,36 @@ class _ProductListScreenState extends State<ProductListScreen> {
           .eq('produkid', produkID);
 
       _loadProducts();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product deleted successfully')),
-      );
+      
+      // Show success notification for delete
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => SuccessNotificationDialog(
+            message: "Product deleted\nsuccessfully!",
+            onOkPressed: () => Navigator.pop(context),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting product: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting product: $e')),
+        );
+      }
     }
+  }
+
+  // LANGSUNG BUKA FORM ADD TANPA KONFIRMASI
+  void _openAddProductDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AddProductDialog(),
+    );
+    
+    if (result == true) _loadProducts();
   }
 
   @override
@@ -215,7 +238,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
             ),
 
-            // ADD BUTTON
+            // ADD BUTTON - LANGSUNG KE FORM
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Container(
@@ -228,19 +251,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     BoxShadow(
                       color: Colors.black.withOpacity(0.4),
                       blurRadius: 6,
-                      offset: Offset(0, 3),
+                      offset: const Offset(0, 3),
                     )
                   ],
                 ),
                 child: TextButton.icon(
-                  onPressed: () async {
-                    final result = await showDialog<bool>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => const AddProductDialog(),
-                    );
-                    if (result == true) _loadProducts();
-                  },
+                  onPressed: _openAddProductDialog,
                   icon: const Icon(Icons.add, color: Color(0xFF2E343B)),
                   label: const Text(
                     'Add Product',
@@ -259,9 +275,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  // =====================================================================
-  // PRODUCT CARD (SUDAH DIRAPIIN)
-  // =====================================================================
   Widget _buildProductCard(ProdukModel product) {
     return Container(
       decoration: BoxDecoration(
@@ -405,7 +418,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               context: context,
                               builder: (_) => ConfirmationDialog(
                                 logoAssetPath: "assets/images/lensoralogo.png",
-                                message: "Are You Sure About Delete Product?",
+                                message: "Are You Sure About Deleting This Product?",
                                 onNoPressed: () => Navigator.pop(context),
                                 onYesPressed: () {
                                   Navigator.pop(context);
