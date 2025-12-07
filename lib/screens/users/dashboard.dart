@@ -1,15 +1,312 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 import 'package:cashierapp_simulationukk2026/screens/produk/cardproduk.dart';
 import 'package:cashierapp_simulationukk2026/screens/customer/cardcustomer.dart';
 import 'package:cashierapp_simulationukk2026/screens/cashier/cashierui.dart';
+import 'package:cashierapp_simulationukk2026/screens/managementstock/managstock.dart';
+import 'package:cashierapp_simulationukk2026/screens/laporan/laporanapp.dart';
+import 'package:cashierapp_simulationukk2026/screens/users/logoutapp.dart';
+import 'package:cashierapp_simulationukk2026/screens/officers/officerscard.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final String? role;
 
   const DashboardScreen({super.key, required this.role});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final _supabase = Supabase.instance.client;
+
+  // Data variables
+  double _todaySales = 0;
+  int _totalStock = 0;
+  int _totalActiveUsers = 0;
+  List<double> _weeklyData = [0, 0, 0, 0, 0, 0, 0];
+  Map<String, List<double>> _monthlyData = {
+    'Camera': [],
+    'Lens': [],
+    'Equipment': [],
+  };
+  List<Map<String, dynamic>> _recentTransactions = [];
+  bool _isLoading = true;
+
+  // Realtime subscriptions
+  RealtimeChannel? _stockChannel;
+  RealtimeChannel? _customerChannel;
+  RealtimeChannel? _salesChannel;
+  RealtimeChannel? _detailSalesChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+    _subscribeToRealtimeChanges();
+  }
+
+  @override
+  void dispose() {
+    _stockChannel?.unsubscribe();
+    _customerChannel?.unsubscribe();
+    _salesChannel?.unsubscribe();
+    _detailSalesChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  // 🔥 REALTIME SUBSCRIPTIONS FOR ALL TABLES
+  void _subscribeToRealtimeChanges() {
+    // 1. Subscribe to STOCK changes (produk table)
+    _stockChannel = _supabase
+        .channel('stock_realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'produk',
+          callback: (payload) {
+            debugPrint('📦 Stock changed: ${payload.eventType}');
+            _loadTotalStock();
+          },
+        )
+        .subscribe();
+
+    // 2. Subscribe to CUSTOMER changes (pelanggan table)
+    _customerChannel = _supabase
+        .channel('customer_realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'pelanggan',
+          callback: (payload) {
+            debugPrint('👥 Customer changed: ${payload.eventType}');
+            _loadTotalActiveUsers();
+          },
+        )
+        .subscribe();
+
+    // 3. Subscribe to SALES changes (penjualan table)
+    _salesChannel = _supabase
+        .channel('sales_realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'penjualan',
+          callback: (payload) {
+            debugPrint('💰 Sales changed: ${payload.eventType}');
+            _loadTodaySales();
+            _loadWeeklyData();
+            _loadRecentTransactions();
+          },
+        )
+        .subscribe();
+
+    // 4. Subscribe to DETAIL SALES changes (detailpenjualan table) for monthly report
+    _detailSalesChannel = _supabase
+        .channel('detail_sales_realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'detailpenjualan',
+          callback: (payload) {
+            debugPrint('📊 Detail sales changed: ${payload.eventType}');
+            _loadMonthlyData();
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+    
+    await Future.wait([
+      _loadTodaySales(),
+      _loadTotalStock(),
+      _loadTotalActiveUsers(),
+      _loadWeeklyData(),
+      _loadMonthlyData(),
+      _loadRecentTransactions(),
+    ]);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // 1️⃣ TODAY'S SALES - REALTIME
+  Future<void> _loadTodaySales() async {
+    try {
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      
+      final response = await _supabase
+          .from('penjualan')
+          .select('grandtotal')
+          .gte('tanggalpenjualan', startOfDay.toIso8601String())
+          .lt('tanggalpenjualan', startOfDay.add(const Duration(days: 1)).toIso8601String());
+
+      double total = 0;
+      for (var item in response) {
+        total += (item['grandtotal'] as num).toDouble();
+      }
+
+      if (mounted) {
+        setState(() => _todaySales = total);
+      }
+    } catch (e) {
+      debugPrint('Error loading today sales: $e');
+    }
+  }
+
+  // 2️⃣ TOTAL STOCK - REALTIME
+  Future<void> _loadTotalStock() async {
+    try {
+      final response = await _supabase
+          .from('produk')
+          .select('stok');
+
+      int total = 0;
+      for (var item in response) {
+        total += (item['stok'] as int);
+      }
+
+      if (mounted) {
+        setState(() => _totalStock = total);
+      }
+    } catch (e) {
+      debugPrint('Error loading total stock: $e');
+    }
+  }
+
+  // 3️⃣ TOTAL ACTIVE USERS (CUSTOMERS) - REALTIME
+  Future<void> _loadTotalActiveUsers() async {
+    try {
+      final response = await _supabase
+          .from('pelanggan')
+          .select('pelangganid');
+
+      if (mounted) {
+        setState(() => _totalActiveUsers = response.length);
+      }
+    } catch (e) {
+      debugPrint('Error loading total users: $e');
+    }
+  }
+
+  // 4️⃣ WEEKLY DATA (Mon-Sun) - REALTIME
+  Future<void> _loadWeeklyData() async {
+    try {
+      final now = DateTime.now();
+      final monday = now.subtract(Duration(days: now.weekday - 1));
+      final startOfWeek = DateTime(monday.year, monday.month, monday.day);
+
+      final response = await _supabase
+          .from('penjualan')
+          .select('tanggalpenjualan, grandtotal')
+          .gte('tanggalpenjualan', startOfWeek.toIso8601String());
+
+      List<double> weekData = [0, 0, 0, 0, 0, 0, 0];
+
+      for (var item in response) {
+        final date = DateTime.parse(item['tanggalpenjualan']);
+        final dayIndex = date.weekday - 1; // Mon=0, Sun=6
+        if (dayIndex >= 0 && dayIndex < 7) {
+          weekData[dayIndex] += (item['grandtotal'] as num).toDouble();
+        }
+      }
+
+      if (mounted) {
+        setState(() => _weeklyData = weekData);
+      }
+    } catch (e) {
+      debugPrint('Error loading weekly data: $e');
+    }
+  }
+
+  // 5️⃣ MONTHLY DATA (Last 3 months, by category) - REALTIME
+  Future<void> _loadMonthlyData() async {
+    try {
+      final now = DateTime.now();
+      final threeMonthsAgo = DateTime(now.year, now.month - 3, 1);
+
+      final response = await _supabase
+          .from('detailpenjualan')
+          .select('penjualanid, produkid, subtotal, penjualan!inner(tanggalpenjualan), produk!inner(kategori)')
+          .gte('penjualan.tanggalpenjualan', threeMonthsAgo.toIso8601String());
+
+      // Group by category and month
+      Map<String, Map<int, double>> categoryMonthly = {
+        'Camera': {},
+        'Lens': {},
+        'Equipment': {},
+      };
+
+      for (var item in response) {
+        final category = item['produk']['kategori'] as String;
+        final date = DateTime.parse(item['penjualan']['tanggalpenjualan']);
+        final monthKey = date.month;
+        final subtotal = (item['subtotal'] as num).toDouble();
+
+        if (categoryMonthly.containsKey(category)) {
+          categoryMonthly[category]![monthKey] = 
+              (categoryMonthly[category]![monthKey] ?? 0) + subtotal;
+        }
+      }
+
+      // Convert to list (last 3 months)
+      Map<String, List<double>> result = {};
+      for (var category in ['Camera', 'Lens', 'Equipment']) {
+        result[category] = [];
+        for (int i = 2; i >= 0; i--) {
+          final month = DateTime(now.year, now.month - i, 1).month;
+          result[category]!.add(categoryMonthly[category]![month] ?? 0);
+        }
+      }
+
+      if (mounted) {
+        setState(() => _monthlyData = result);
+      }
+    } catch (e) {
+      debugPrint('Error loading monthly data: $e');
+    }
+  }
+
+  // 6️⃣ RECENT TRANSACTIONS (Last 2) - REALTIME
+  Future<void> _loadRecentTransactions() async {
+    try {
+      final response = await _supabase
+          .from('penjualan')
+          .select('notransaksi, grandtotal, metodepembayaran, tanggalpenjualan, detailpenjualan!inner(produk!inner(namaproduk))')
+          .order('tanggalpenjualan', ascending: false)
+          .limit(2);
+
+      List<Map<String, dynamic>> transactions = [];
+
+      for (var item in response) {
+        final details = item['detailpenjualan'] as List;
+        final productName = details.isNotEmpty 
+            ? details[0]['produk']['namaproduk'] 
+            : 'Unknown Product';
+
+        transactions.add({
+          'name': 'Transaksi Berhasil!',
+          'product': productName,
+          'amount': item['grandtotal'],
+          'payment': item['metodepembayaran'],
+        });
+      }
+
+      if (mounted) {
+        setState(() => _recentTransactions = transactions);
+      }
+    } catch (e) {
+      debugPrint('Error loading recent transactions: $e');
+    }
+  }
 
   Color get bg => const Color(0xFF25292E);
   Color get box => const Color(0xFF2E343B);
@@ -19,145 +316,161 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bg,
-      endDrawer: CustomDrawer(role: role),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ================= HEADER =================
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Dashboard",
-                  style: GoogleFonts.poppins(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Builder(
-                  builder: (context) => IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white, size: 30),
-                    onPressed: () => Scaffold.of(context).openEndDrawer(),
-                  ),
-                )
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // ================= TODAY SALES =================
-            Container(
-              width: 385,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: box,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: inner,
-                      borderRadius: BorderRadius.circular(25),
+      endDrawer: CustomDrawer(role: widget.role),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFE4B169)),
+            )
+          : RefreshIndicator(
+              color: const Color(0xFFE4B169),
+              onRefresh: _loadDashboardData,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ================= HEADER =================
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Dashboard",
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: const Icon(Icons.menu, color: Colors.white, size: 30),
+                            onPressed: () => Scaffold.of(context).openEndDrawer(),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      "Today's Sales",
+
+                    const SizedBox(height: 20),
+
+                    // ================= TODAY SALES =================
+                    _buildTodaySalesCard(),
+
+                    const SizedBox(height: 25),
+
+                    // ================= DETAIL TITLE =================
+                    Text(
+                      "Detail",
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
                         fontSize: 20,
-                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
                         decoration: TextDecoration.none,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Rp 1.934.000",
-                        style: GoogleFonts.poppins(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(.2),
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child:
-                            const Icon(Icons.trending_up, color: Colors.green),
-                      )
-                    ],
-                  ),
-                ],
+
+                    const SizedBox(height: 16),
+
+                    // ================= STOCK + USERS =================
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _statBox("Total Stock Product", _totalStock.toString(), "Product"),
+                        const SizedBox(width: 18),
+                        _statBox("Total Active Customer", _totalActiveUsers.toString(), "Users"),
+                      ],
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // ================= WEEKLY GRAPH =================
+                    _graphSection(title: "Weekly Report", child: _weeklyGraph()),
+
+                    const SizedBox(height: 30),
+
+                    // ================= MONTHLY GRAPH =================
+                    _graphSection(title: "Monthly Report", child: _monthlyGraph()),
+
+                    const SizedBox(height: 30),
+
+                    // ================= TX LIST =================
+                    _transactionSection(),
+                  ],
+                ),
               ),
             ),
+    );
+  }
 
-            const SizedBox(height: 25),
+  // ======================== TODAY SALES CARD =========================
+  Widget _buildTodaySalesCard() {
+    final isTrending = _todaySales >= 500000;
+    final trendColor = isTrending ? Colors.green : Colors.red;
+    final trendIcon = isTrending ? Icons.trending_up : Icons.trending_down;
 
-            // ================= DETAIL TITLE =================
-            Text(
-              "Detail",
+    return Container(
+      width: 385,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: box,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.25),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: inner,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Text(
+              "Today's Sales",
               style: GoogleFonts.poppins(
-                fontSize: 20,
                 color: Colors.white,
-                fontWeight: FontWeight.w600,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
                 decoration: TextDecoration.none,
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // ================= STOCK + USERS =================
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _statBox("Total Stock Product", "63", "Product"),
-                const SizedBox(width: 18),
-                _statBox("Total Active Users", "123", "Users"),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            // ================= WEEKLY GRAPH =================
-            _graphSection(
-              title: "Weekly Report",
-              child: _weeklyGraph(),
-            ),
-
-            const SizedBox(height: 30),
-
-            // ================= MONTHLY GRAPH =================
-            _graphSection(
-              title: "Monthly Report",
-              child: _monthlyGraph(),
-            ),
-
-            const SizedBox(height: 30),
-
-            // ================= TX LIST =================
-            _transactionSection(),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Rp ${NumberFormat('#,###', 'id_ID').format(_todaySales)}",
+                style: GoogleFonts.poppins(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: trendColor.withOpacity(.2),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Icon(
+                  trendIcon,
+                  color: trendColor,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -202,10 +515,7 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              color: Colors.white,
-            ),
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
           ),
         ],
       ),
@@ -226,15 +536,14 @@ class DashboardScreen extends StatelessWidget {
             color: Colors.black.withOpacity(.25),
             blurRadius: 8,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: inner,
               borderRadius: BorderRadius.circular(25),
@@ -255,9 +564,10 @@ class DashboardScreen extends StatelessWidget {
                 color: inner,
                 borderRadius: BorderRadius.circular(25),
               ),
+              padding: const EdgeInsets.all(12),
               child: child,
             ),
-          )
+          ),
         ],
       ),
     );
@@ -265,91 +575,117 @@ class DashboardScreen extends StatelessWidget {
 
   // ======================== WEEKLY GRAPH =========================
   Widget _weeklyGraph() {
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: 6,
-        minY: 0,
-        maxY: 10,
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _weeklyData.reduce((a, b) => a > b ? a : b) * 1.2,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                if (value.toInt() >= 0 && value.toInt() < days.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      days[value.toInt()],
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                      ),
+                    ),
+                  );
+                }
+                return const Text('');
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
         gridData: FlGridData(show: false),
         borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(show: false),
-        lineBarsData: [
-          LineChartBarData(
-            isCurved: true,
-            barWidth: 4,
-            color: Colors.blueAccent,
-            dotData: FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.blueAccent.withOpacity(.30),
-                  Colors.blueAccent.withOpacity(.03),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+        barGroups: List.generate(_weeklyData.length, (index) {
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: _weeklyData[index],
+                color: Colors.blueAccent,
+                width: 16,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  topRight: Radius.circular(6),
+                ),
               ),
-            ),
-            spots: const [
-              FlSpot(0, 2),
-              FlSpot(1, 4),
-              FlSpot(2, 3),
-              FlSpot(3, 6),
-              FlSpot(4, 5),
-              FlSpot(5, 7),
-              FlSpot(6, 9),
             ],
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
 
   // ======================== MONTHLY GRAPH =========================
   Widget _monthlyGraph() {
+    final now = DateTime.now();
+    final months = List.generate(3, (i) {
+      final month = DateTime(now.year, now.month - (2 - i), 1);
+      return DateFormat('MMM').format(month);
+    });
+
     return LineChart(
       LineChartData(
-        minX: 0,
-        maxX: 11,
-        minY: 0,
-        maxY: 10,
         gridData: FlGridData(show: false),
         borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(show: false),
-        lineBarsData: [
-          LineChartBarData(
-            isCurved: true,
-            barWidth: 4,
-            color: Colors.orangeAccent,
-            dotData: FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.orangeAccent.withOpacity(.30),
-                  Colors.orangeAccent.withOpacity(.03),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() >= 0 && value.toInt() < months.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      months[value.toInt()],
+                      style: const TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  );
+                }
+                return const Text('');
+              },
             ),
-            spots: const [
-              FlSpot(0, 3),
-              FlSpot(1, 4),
-              FlSpot(2, 6),
-              FlSpot(3, 5),
-              FlSpot(4, 7),
-              FlSpot(5, 8),
-              FlSpot(6, 6),
-              FlSpot(7, 7),
-              FlSpot(8, 9),
-              FlSpot(9, 8),
-              FlSpot(10, 9),
-              FlSpot(11, 10),
-            ],
           ),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        lineBarsData: [
+          // Camera line
+          _buildLineData(_monthlyData['Camera']!, Colors.blueAccent),
+          // Lens line
+          _buildLineData(_monthlyData['Lens']!, Colors.redAccent),
+          // Equipment line
+          _buildLineData(_monthlyData['Equipment']!, Colors.greenAccent),
         ],
+      ),
+    );
+  }
+
+  LineChartBarData _buildLineData(List<double> data, Color color) {
+    return LineChartBarData(
+      spots: List.generate(data.length, (i) => FlSpot(i.toDouble(), data[i])),
+      isCurved: true,
+      color: color,
+      barWidth: 3,
+      dotData: FlDotData(show: true),
+      belowBarData: BarAreaData(
+        show: true,
+        color: color.withOpacity(0.15),
       ),
     );
   }
@@ -367,7 +703,7 @@ class DashboardScreen extends StatelessWidget {
             color: Colors.black.withOpacity(.25),
             blurRadius: 8,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -391,21 +727,29 @@ class DashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          _transactionItem(
-            name: "Transaksi Berhasil!",
-            product: "Kamera Fujifilm X-A7",
-            amount: "Rp 2.350.000",
-            payment: "Cash",
-          ),
-
-          const SizedBox(height: 12),
-
-          _transactionItem(
-            name: "Transaksi Berhasil!",
-            product: "Tripod Takara ECO-173A",
-            amount: "Rp 890.000",
-            payment: "Non Cash",
-          ),
+          if (_recentTransactions.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'No transactions yet',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._recentTransactions.map((tx) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _transactionItem(
+                    name: tx['name'],
+                    product: tx['product'],
+                    amount: "Rp ${NumberFormat('#,###', 'id_ID').format(tx['amount'])}",
+                    payment: tx['payment'] == 'cash' ? 'Cash' : 'Non Cash',
+                  ),
+                )),
         ],
       ),
     );
@@ -429,25 +773,26 @@ class DashboardScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // LEFT
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-              ),
-              Text(
-                product,
-                style: GoogleFonts.poppins(
-                  color: Colors.white70,
-                  fontSize: 12,
+                Text(
+                  product,
+                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // RIGHT
@@ -464,18 +809,14 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.white10,
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: Text(
                   payment,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 11,
-                  ),
+                  style: GoogleFonts.poppins(color: Colors.white, fontSize: 11),
                 ),
               ),
             ],
@@ -514,92 +855,93 @@ class CustomDrawer extends StatelessWidget {
           _buildDivider(),
 
           // Product
-          _buildDrawerItem(
-            context,
-            Icons.camera_alt_outlined,
-            "Product",
-            () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ProductListScreen(),
-                ),
-              );
-            },
-          ),
+          _buildDrawerItem(context, Icons.camera_alt_outlined, "Product", () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProductListScreen()),
+            );
+          }),
           _buildDivider(),
 
           // Customer
-          _buildDrawerItem(
-            context,
-            Icons.headset_mic_outlined,
-            "Customer",
-            () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CustomerManagementScreen(),
-                ),
-              );
-            },
-          ),
+          _buildDrawerItem(context, Icons.headset_mic_outlined, "Customer", () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CustomerManagementScreen(),
+              ),
+            );
+          }),
           _buildDivider(),
 
           // Cashier
-          _buildDrawerItem(
-            context,
-            Icons.shopping_bag_outlined,
-            "Cashier",
-            () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CashierScreen(),
-                ),
-              );
-            },
-          ),
-          _buildDivider(),
-
-          // Add New Officers (hanya untuk admin)
-          if (role == "admin") ...[
-            _buildDrawerItem(
+          _buildDrawerItem(context, Icons.shopping_bag_outlined, "Cashier", () {
+            Navigator.pop(context);
+            Navigator.push(
               context,
-              Icons.person_add_outlined,
-              "Add New Officers",
-              () {},
-            ),
-            _buildDivider(),
-          ],
+              MaterialPageRoute(builder: (_) => const CashierScreen()),
+            );
+          }),
+          _buildDivider(),
 
           // Management Store
           _buildDrawerItem(
             context,
             Icons.store_outlined,
             "Management Stock",
-            () {},
+            () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ManagementStockScreen(),
+                ),
+              );
+            },
           ),
-          _buildDivider(),
 
           // Report and PIN
           _buildDrawerItem(
             context,
             Icons.print_outlined,
             "Report and Print",
-            () {},
+            () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportPrintScreen()),
+              );
+            },
+          ),
+          _buildDivider(),
+
+          // Add New Officers
+          _buildDrawerItem(
+            context,
+            Icons.person_add_outlined,
+            "Add New Officers",
+            () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddNewOfficersScreen(),
+                ),
+              );
+            },
           ),
           _buildDivider(),
 
           // Settings
-          _buildDrawerItem(
-            context,
-            Icons.settings_outlined,
-            "Settings",
-            () {},
-          ),
+          _buildDrawerItem(context, Icons.settings_outlined, "Settings", () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            );
+          }),
         ],
       ),
     );
@@ -617,11 +959,7 @@ class CustomDrawer extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 24,
-            ),
+            Icon(icon, color: Colors.white, size: 24),
             const SizedBox(width: 16),
             Text(
               title,
