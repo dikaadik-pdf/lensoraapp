@@ -5,88 +5,105 @@ class AuthService {
 
   User? get currentUser => supabase.auth.currentUser;
 
-  /// ============= SIGN UP =============
-  Future<String> signUp({
-    required String email,
-    required String password,
-    required String role,
-  }) async {
-    try {
-      // Sign up ke auth
-      final response = await supabase.auth.signUp(
-        email: email.trim(),
-        password: password,
-      );
-
-      if (response.user != null) {
-        // Insert ke tabel users
-        await insertUserToTable(
-          userID: response.user!.id,
-          email: email.trim(),
-          role: role.toLowerCase(), // admin / petugas
-        );
-        return 'Sign up berhasil';
-      }
-
-      return 'Gagal sign up';
-    } on AuthException catch (e) {
-      return e.message;
-    } catch (e) {
-      return 'Error: $e';
-    }
-  }
-
-  /// ============= INSERT USER KE TABEL USERS =============
-  Future<void> insertUserToTable({
-    required String userID,
-    required String email,
-    required String role,
-  }) async {
-    await supabase.from('users').insert({
-      'id': userID,
-      'email': email,
-      'role': role,
-    });
-  }
-
   // ============= LOGIN =============
   Future<Map<String, dynamic>?> login({
     required String email,
     required String password,
   }) async {
     try {
-      // 1️⃣ Login murni ke Supabase Auth
+      print('🔐 Attempting login for: $email');
+      
       final response = await supabase.auth.signInWithPassword(
         email: email.trim(),
         password: password,
       );
 
-      if (response.user == null) return null; // email/password salah
+      final user = response.user;
+      if (user == null) {
+        print('❌ Login failed: No user returned');
+        return null;
+      }
 
-      final uid = response.user!.id;
+      print('✅ Auth successful, fetching user data...');
 
-      // 2️⃣ Ambil role dari tabel users (opsional)
-      final roleData = await supabase
+      // ✅ Fetch role dari tabel users
+      final data = await supabase
           .from('users')
-          .select('role')
-          .eq('id', uid)
-          .maybeSingle();
-      print(
-        'Login successful: $email with role ${roleData != null ? roleData['role'] : 'N/A'}',
-      );
+          .select('role, full_name')
+          .eq('id', user.id)
+          .maybeSingle(); // ✅ Use maybeSingle untuk handle case tidak ada data
+
+      if (data == null) {
+        print('❌ User data not found in users table');
+        throw Exception('User data not found. Please contact admin.');
+      }
+
+      print('✅ Login successful: ${data['role']}');
+
       return {
-        'uid': uid,
-        'email': response.user!.email,
-        'role': roleData != null ? roleData['role'] : null, // kalau ada role
+        'uid': user.id,
+        'email': user.email,
+        'role': data['role'],
+        'full_name': data['full_name'],
+      };
+      
+    } on AuthException catch (e) {
+      print('❌ AuthException: ${e.message}');
+      throw Exception('Login failed: ${e.message}');
+    } on PostgrestException catch (e) {
+      print('❌ PostgrestException: ${e.message}');
+      throw Exception('Database error: ${e.message}');
+    } catch (e) {
+      print('❌ Unknown error: $e');
+      throw Exception('Login failed: $e');
+    }
+  }
+
+  // ============= LOGOUT =============
+  Future<void> signOut() async {
+    try {
+      print('🚪 Signing out...');
+      await supabase.auth.signOut();
+      print('✅ Signed out successfully');
+    } catch (e) {
+      print('❌ Signout error: $e');
+      throw Exception('Logout failed: $e');
+    }
+  }
+
+  // ============= GET CURRENT USER DATA =============
+  Future<Map<String, dynamic>?> getCurrentUserData() async {
+    try {
+      final user = currentUser;
+      if (user == null) return null;
+
+      final data = await supabase
+          .from('users')
+          .select('role, full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (data == null) return null;
+
+      return {
+        'uid': user.id,
+        'email': user.email,
+        'role': data['role'],
+        'full_name': data['full_name'],
       };
     } catch (e) {
-      print('Login error: $e');
+      print('❌ Error getting user data: $e');
       return null;
     }
   }
 
-  /// ============= LOGOUT =============
-  Future<void> signOut() async {
-    await supabase.auth.signOut();
+  // ============= CHECK IF USER IS ADMIN =============
+  Future<bool> isAdmin() async {
+    try {
+      final userData = await getCurrentUserData();
+      return userData?['role'] == 'admin';
+    } catch (e) {
+      return false;
+    }
   }
 }

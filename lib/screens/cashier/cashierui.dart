@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cashierapp_simulationukk2026/models/pelanggan_models.dart';
 import 'package:cashierapp_simulationukk2026/models/produk_model.dart';
 import 'package:cashierapp_simulationukk2026/screens/cashier/cartitem_models.dart';
@@ -18,6 +19,7 @@ class _CashierScreenState extends State<CashierScreen> {
   List<CartItemModel> _cartItems = [];
   String _paymentMethod = 'Cash';
   double _discountPercent = 0.0;
+  int _customerTransactionCount = 0; // Menyimpan jumlah transaksi customer
   final TextEditingController _cashAmountController = TextEditingController();
 
   double get _subtotal {
@@ -45,6 +47,41 @@ class _CashierScreenState extends State<CashierScreen> {
     super.dispose();
   }
 
+  // Method untuk menghitung diskon otomatis berdasarkan jumlah transaksi
+  double _calculateAutoDiscount(int transactionCount) {
+    if (transactionCount >= 10) {
+      return 25.0;
+    } else if (transactionCount >= 6) {
+      return 20.0;
+    } else if (transactionCount >= 3) {
+      return 15.0;
+    }
+    return 0.0;
+  }
+
+  // Method untuk mengambil jumlah transaksi customer
+  Future<void> _loadCustomerTransactionCount(int customerId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('penjualan')
+          .select('penjualanid')
+          .eq('pelangganid', customerId);
+
+      final count = (response as List).length;
+
+      setState(() {
+        _customerTransactionCount = count;
+        _discountPercent = _calculateAutoDiscount(count);
+      });
+    } catch (e) {
+      debugPrint('Error loading transaction count: $e');
+      setState(() {
+        _customerTransactionCount = 0;
+        _discountPercent = 0.0;
+      });
+    }
+  }
+
   void _selectCustomer() async {
     final customer = await showDialog<PelangganModel>(
       context: context,
@@ -54,6 +91,17 @@ class _CashierScreenState extends State<CashierScreen> {
 
     if (customer != null) {
       setState(() => _selectedCustomer = customer);
+
+      // Load transaction count jika bukan walk-in customer
+      if (customer.pelangganID != null && customer.pelangganID! > 0) {
+        await _loadCustomerTransactionCount(customer.pelangganID!);
+      } else {
+        // Walk-in customer tidak dapat diskon
+        setState(() {
+          _customerTransactionCount = 0;
+          _discountPercent = 0.0;
+        });
+      }
     }
   }
 
@@ -129,6 +177,7 @@ class _CashierScreenState extends State<CashierScreen> {
         _cartItems.clear();
         _paymentMethod = 'Cash';
         _discountPercent = 0.0;
+        _customerTransactionCount = 0;
         _cashAmountController.clear();
       });
     }
@@ -148,7 +197,7 @@ class _CashierScreenState extends State<CashierScreen> {
                     top: 20, left: 16, right: 16, bottom: 16),
                 child: Column(
                   children: [
-                    Center(child: _buildAddProductButton()), // **DITENGAH**
+                    Center(child: _buildAddProductButton()),
                     const SizedBox(height: 16),
                     if (_cartItems.isNotEmpty) _buildCartSection(),
                     if (_cartItems.isEmpty) _buildEmptyCart(),
@@ -366,7 +415,7 @@ class _CashierScreenState extends State<CashierScreen> {
       child: Column(
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start, // supaya sejajar kiri
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -391,7 +440,6 @@ class _CashierScreenState extends State<CashierScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    /// **QTY BUTTON DI KIRI RATA TEKS**
                     Container(
                       width: 110,
                       height: 32,
@@ -427,7 +475,6 @@ class _CashierScreenState extends State<CashierScreen> {
                 ),
               ),
 
-              /// DELETE ICON PUTIH
               IconButton(
                 onPressed: () => _removeCartItem(index),
                 icon: const Icon(Icons.delete_outline, color: Colors.white),
@@ -464,38 +511,24 @@ class _CashierScreenState extends State<CashierScreen> {
   }
 
   Widget _buildDiscountRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    String discountLabel = 'Discount';
+    
+    // Tampilkan info diskon otomatis jika ada
+    if (_discountPercent > 0) {
+      discountLabel = 'Discount (Auto ${_discountPercent.toStringAsFixed(0)}%)';
+    }
+
+    return Column(
       children: [
-        const Text('Discount',
-            style: TextStyle(color: Colors.grey, fontSize: 14)),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 70,
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFF3A4C5E),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TextField(
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                textAlign: TextAlign.right,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: '0',
-                  hintStyle: TextStyle(color: Colors.grey),
-                ),
-                onChanged: (value) {
-                  setState(() => _discountPercent = double.tryParse(value) ?? 0);
-                },
+            Expanded(
+              child: Text(
+                discountLabel,
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
             ),
-            const SizedBox(width: 4),
-            const Text('%', style: TextStyle(color: Colors.white)),
-            const SizedBox(width: 8),
             Text(
               'Rp ${_discountAmount.toStringAsFixed(0)}',
               style: const TextStyle(
@@ -506,6 +539,58 @@ class _CashierScreenState extends State<CashierScreen> {
             ),
           ],
         ),
+        
+        // Info badge untuk customer
+        if (_selectedCustomer != null && _selectedCustomer!.pelangganID != null && _selectedCustomer!.pelangganID! > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _discountPercent > 0 
+                    ? const Color(0xFFE4B169).withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _discountPercent > 0 
+                      ? const Color(0xFFE4B169)
+                      : Colors.grey,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _discountPercent > 0 ? Icons.card_giftcard : Icons.info_outline,
+                    size: 14,
+                    color: _discountPercent > 0 
+                        ? const Color(0xFFE4B169)
+                        : Colors.grey,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _customerTransactionCount >= 10
+                          ? '🎉 VIP Member: $_customerTransactionCount transactions'
+                          : _customerTransactionCount >= 6
+                              ? '⭐ Gold Member: $_customerTransactionCount transactions'
+                              : _customerTransactionCount >= 3
+                                  ? '✨ Silver Member: $_customerTransactionCount transactions'
+                                  : 'Total transactions: $_customerTransactionCount (Need ${3 - _customerTransactionCount} more for discount)',
+                      style: TextStyle(
+                        color: _discountPercent > 0 
+                            ? const Color(0xFFE4B169)
+                            : Colors.grey,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }

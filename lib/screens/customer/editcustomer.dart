@@ -87,15 +87,14 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
       return;
     }
 
-  
     showDialog(
       context: context,
-      builder: (_) => ConfirmationDialog(
+      builder: (confirmContext) => ConfirmationDialog(
         logoAssetPath: "assets/images/lensoralogo.png",
         message: "Are You Sure About Updating This Customer?",
-        onNoPressed: () => Navigator.pop(context),
+        onNoPressed: () => Navigator.of(confirmContext).pop(),
         onYesPressed: () {
-          Navigator.pop(context); 
+          Navigator.of(confirmContext).pop(); 
           _updateCustomer();
         },
       ),
@@ -103,6 +102,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
   }
 
   Future<void> _updateCustomer() async {
+    if (!mounted) return;
     setState(() => _loading = true);
 
     try {
@@ -128,17 +128,16 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
 
       if (result != null) {
         setState(() => _loading = false);
-        Navigator.of(context).pop(); 
         
-        
-        showDialog(
+        // Show success notification and close both dialogs when OK is pressed
+        await showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => SuccessNotificationDialog(
+          builder: (notifContext) => SuccessNotificationDialog(
             message: "Customer updated\nsuccessfully!",
             onOkPressed: () {
-              Navigator.pop(context); 
-              Navigator.pop(context, true); 
+              Navigator.of(notifContext).pop(); // Close notification
+              Navigator.of(context).pop(true); // Close edit dialog with success flag
             },
           ),
         );
@@ -154,15 +153,16 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> {
   }
 
   void _showError(String msg) {
+    if (!mounted) return;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (errorContext) => AlertDialog(
         backgroundColor: const Color(0xFF2E343B),
         title: const Text('Error', style: TextStyle(color: Colors.white)),
         content: Text(msg, style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.of(errorContext).pop(),
             child: const Text(
               'OK',
               style: TextStyle(color: Color(0xFFE4B169)),

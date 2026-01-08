@@ -221,7 +221,7 @@ class _LoginPageState extends State<LoginPage> {
           title: "Terjadi Kesalahan",
           message: e.toString().contains("network")
               ? "Tidak dapat terhubung ke server.\nPeriksa koneksi internet."
-              : "Error: ${e.toString()}",
+              : "Error\n Tolong Cek Kembali Email dan Password Anda.",
         ),
       );
     } finally {

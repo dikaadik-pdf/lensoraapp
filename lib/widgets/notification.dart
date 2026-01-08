@@ -86,7 +86,7 @@ class SuccessNotificationDialog extends StatelessWidget {
                             ),
                           ),
                           child: const Text(
-                            "Ok",
+                            "OK",
                             style: TextStyle(
                               fontSize: 15,
                               color: Colors.white,

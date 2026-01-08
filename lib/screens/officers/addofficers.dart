@@ -98,15 +98,17 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
   }
 
   void _confirmSaveOfficer() {
-    // Validasi input
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
       _showError('Please fill all fields!');
       return;
     }
 
+    final email = _emailController.text.trim();
+
     // Validasi email format
-    if (!_emailController.text.contains('@')) {
-      _showError('Please enter a valid email address!');
+    final emailRegex = RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      _showError('Please enter a valid email address!\n(e.g., user@example.com)');
       return;
     }
 
@@ -116,16 +118,22 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
       return;
     }
 
+    // Validasi password tidak boleh terlalu simple
+    final commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123'];
+    if (commonPasswords.contains(_passwordController.text.toLowerCase())) {
+      _showError('Password too common! Please use a stronger password.');
+      return;
+    }
+
     // Show confirmation dialog
     showDialog(
       context: context,
       builder: (_) => ConfirmationDialog(
         logoAssetPath: "assets/images/lensoralogo.png",
-        message:
-            "Are You Sure About Adding This Officer?",
+        message: "Are You Sure About Adding This Officer?",
         onNoPressed: () => Navigator.pop(context),
         onYesPressed: () {
-          Navigator.pop(context); // Close confirmation
+          Navigator.pop(context);
           _saveOfficer();
         },
       ),
@@ -133,77 +141,188 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
   }
 
   Future<void> _saveOfficer() async {
+    if (!mounted) return;
+
     try {
       setState(() => _loading = true);
 
-      // Gunakan email sebagai full_name juga (atau bisa custom)
       final email = _emailController.text.trim();
-      final fullName = email.split('@')[0]; // Ambil username dari email
+      final fullName = email.split('@')[0];
 
-      // Gunakan service untuk add officer dengan auth
-      await _officerService.addOfficerWithAuth(
-        fullName: fullName, // Auto-generate dari email
+      print('🚀 Creating officer: $email');
+
+      // Call service
+      final officer = await _officerService.addOfficerWithAuth(
+        fullName: fullName,
         email: email,
         password: _passwordController.text,
         category: _selectedCategory,
       );
 
-      if (mounted) {
-        setState(() => _loading = false);
-        Navigator.pop(context, true); // Close add dialog dengan signal refresh
+      print('✅ Officer created: ${officer.id}');
 
-        // Show success notification
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => SuccessNotificationDialog(
-            message:
-                "Officer added successfully!\n\nLogin credentials created for:\n$email",
-            onOkPressed: () {
-              Navigator.pop(context); // Close notification
-            },
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      setState(() => _loading = false);
+      
+      // Close dialog dengan signal refresh
+      Navigator.pop(context, true);
+
+      // Show success notification
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SuccessNotificationDialog(
+          message:
+              "✅ Officer added successfully!Selamat Bergabung",
+          onOkPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      );
     } catch (e) {
+      print('❌ Error: $e');
+      
+      if (!mounted) return;
+      
       setState(() => _loading = false);
 
-      // Handle specific error messages
-      String errorMsg = e.toString();
-      if (errorMsg.contains('already registered')) {
-        errorMsg = 'Email already registered!';
-      } else if (errorMsg.contains('Invalid email')) {
-        errorMsg = 'Invalid email format!';
-      } else if (errorMsg.contains('Password')) {
-        errorMsg = 'Password too weak!';
+      // Parse error
+      String errorMsg = e.toString()
+          .replaceAll('Exception: ', '')
+          .replaceAll('Failed to add officer: ', '')
+          .trim();
+
+      // Handle specific errors
+      if (errorMsg.contains('SYNC_ERROR')) {
+        _showError(
+          '⚠️ Sync Delay Detected\n\n'
+          'The account was created but there was a delay syncing to the database.\n\n'
+          '✅ Please CLOSE this dialog and REFRESH the page.\n\n'
+          'If the user still doesn\'t appear:\n'
+          '1. Check Supabase RLS policies\n'
+          '2. Check database trigger\n'
+          '3. Check console logs',
+          title: 'Warning',
+          isWarning: true,
+          onClose: () {
+            Navigator.pop(context, true); // Signal refresh
+          },
+        );
+        return;
       }
 
-      _showError('Failed: $errorMsg');
+      if (errorMsg.contains('Email sudah terdaftar') || 
+          errorMsg.contains('already registered')) {
+        errorMsg = '❌ Email Already Registered!\n\nPlease use a different email.';
+      } else if (errorMsg.contains('Format email tidak valid') || 
+                 errorMsg.contains('Invalid email')) {
+        errorMsg = '❌ Invalid Email Format!\n\nExample: user@example.com';
+      } else if (errorMsg.contains('Password terlalu lemah') || 
+                 errorMsg.contains('Password should be at least')) {
+        errorMsg = '❌ Password Too Weak!\n\nMinimum 6 characters required.';
+      } else if (errorMsg.contains('Email confirmation enabled')) {
+        errorMsg = 
+            '⚠️ Email Confirmation is Enabled\n\n'
+            'Please disable it in Supabase:\n\n'
+            '1. Go to Authentication > Providers\n'
+            '2. Click on Email\n'
+            '3. Uncheck "Confirm email"\n'
+            '4. Save changes';
+      } else if (errorMsg.contains('User registration disabled')) {
+        errorMsg = 
+            '⚠️ User Registration is Disabled\n\n'
+            'Please enable it in Supabase:\n\n'
+            '1. Go to Authentication > Providers\n'
+            '2. Click on Email\n'
+            '3. Check "Enable Email provider"\n'
+            '4. Save changes';
+      } else if (errorMsg.contains('Permission denied') || 
+                 errorMsg.contains('RLS')) {
+        errorMsg = 
+            '⚠️ Permission Denied\n\n'
+            'Your RLS policies might be blocking this action.\n\n'
+            'Please check:\n'
+            '1. SELECT policy allows reading all users\n'
+            '2. INSERT policy allows admin to create users\n'
+            '3. Run the SQL script provided in setup guide';
+      } else if (errorMsg.contains('No data found')) {
+        errorMsg = 
+            '⚠️ Data Not Found\n\n'
+            'The user was created but cannot be read back.\n\n'
+            'This is usually a RLS SELECT policy issue.\n'
+            'Check your Supabase RLS settings.';
+      } else if (errorMsg.contains('Network')) {
+        errorMsg = '❌ Network Error!\n\nPlease check your internet connection.';
+      }
+
+      _showError(errorMsg);
     }
   }
 
-  void _showError(String msg) {
+  void _showError(
+    String msg, {
+    String title = 'Error',
+    bool isWarning = false,
+    VoidCallback? onClose,
+  }) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2C3E50),
-        title: Text(
-          'Error',
-          style: GoogleFonts.poppins(
-            color: Colors.red,
-            fontWeight: FontWeight.bold,
-          ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
         ),
-        content: Text(
-          msg,
-          style: GoogleFonts.poppins(color: Colors.white70),
+        title: Row(
+          children: [
+            Icon(
+              isWarning ? Icons.warning_amber_rounded : Icons.error_outline,
+              color: isWarning ? Colors.orange : Colors.red,
+              size: 28,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  color: isWarning ? Colors.orange : Colors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            msg,
+            style: GoogleFonts.poppins(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              onClose?.call();
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              backgroundColor: isWarning 
+                  ? Colors.orange.withOpacity(0.1) 
+                  : Colors.red.withOpacity(0.1),
+            ),
             child: Text(
               'OK',
-              style: GoogleFonts.poppins(color: Colors.orange),
+              style: GoogleFonts.poppins(
+                color: isWarning ? Colors.orange : Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
@@ -228,7 +347,6 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // Title
                 Text(
                   "Add New Officers",
                   style: GoogleFonts.poppins(
@@ -237,10 +355,7 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
                     color: Colors.white,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
-                // Subtitle
                 Text(
                   "Create login account for new officer",
                   style: GoogleFonts.poppins(
@@ -248,7 +363,6 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
                     color: Colors.white54,
                   ),
                 ),
-
                 const SizedBox(height: 25),
 
                 // Email
@@ -261,21 +375,19 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
                     hintText: 'example@email.com',
                   ),
                 ),
-
                 const SizedBox(height: 15),
 
                 // Password
                 _label("Password"),
                 const SizedBox(height: 5),
                 Align(
-                  alignment: Alignment.center,
+                  alignment: Alignment.center, 
                   child: _inputField(
                     _passwordController,
                     isPassword: true,
                     hintText: 'Min. 6 characters',
                   ),
                 ),
-
                 const SizedBox(height: 15),
 
                 // Category
@@ -314,14 +426,12 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 10),
 
-                // Info text
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: Text(
-                    "💡 This officer will be able to login using the email and password above",
+                    "This officer will be able to login using the email and password above",
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       color: Colors.orange.shade300,
@@ -330,7 +440,6 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-
                 const SizedBox(height: 30),
 
                 // Buttons
@@ -352,13 +461,14 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
                         ),
                         child: Text(
                           "Cancel",
-                          style: GoogleFonts.poppins(color: Colors.white),
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 20),
-
                     SizedBox(
                       width: 100,
                       height: 35,
@@ -371,23 +481,39 @@ class _AddOfficerDialogWithAuthState extends State<AddOfficerDialogWithAuth> {
                           ),
                         ),
                         child: _loading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Wait",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               )
                             : Text(
                                 "Create",
-                                style: GoogleFonts.poppins(color: Colors.white),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 20),
               ],
             ),

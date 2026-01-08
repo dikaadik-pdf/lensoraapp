@@ -107,7 +107,7 @@ class _AddNewOfficersScreenState extends State<AddNewOfficersScreen> {
           barrierDismissible: false,
           builder: (_) => SuccessNotificationDialog(
             message:
-                "User deleted successfully!\n\nLogin account for ${officer.email} has been removed.",
+                "User deleted successfully!.",
             onOkPressed: () => Navigator.pop(context),
           ),
         );
